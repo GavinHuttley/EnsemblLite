@@ -140,6 +140,9 @@ class DuckdbParquetBase:
 
         self._conn = None
 
+        if not source.exists():
+            msg = f"{self._source} does not exist"
+            raise FileNotFoundError(msg)
         if not source.is_dir():
             msg = f"{self._source} is not a directory"
             raise OSError(msg)

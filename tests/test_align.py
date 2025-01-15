@@ -589,3 +589,13 @@ def test_pickling_db(db_align):
     pkl = pickle.dumps(db_align)  # nosec B301
     upkl = pickle.loads(pkl)  # nosec B301  # noqa: S301
     assert db_align.source == upkl.source
+
+
+def test_aligndb_post_init_failure(tmp_path):
+    with pytest.raises(FileNotFoundError):
+        eti_align.AlignDb(source="/non/existent/directory")
+
+    outfile = tmp_path / "textfile.txt"
+    outfile.write_text("blah")
+    with pytest.raises(OSError):
+        eti_align.AlignDb(source="/non/existent/directory")
