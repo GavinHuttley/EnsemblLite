@@ -350,7 +350,7 @@ class GeneView(eti_storage.DuckdbParquetBase, eti_storage.ViewMixin):
             msg = f"No CDS spans found for {gene=}"
             raise ValueError(msg)
 
-        spans = core_tables.blob_to_array(spans)
+        spans = eti_storage.blob_to_array(spans)
         stable_id = transcript.pop("cds_stable_id")
         return CdsData(
             **{
@@ -385,7 +385,7 @@ class GeneView(eti_storage.DuckdbParquetBase, eti_storage.ViewMixin):
         for record in self.conn.sql(sql).fetchall():
             transcript = dict(zip(columns, record, strict=True))
             spans = transcript.pop("transcript_spans")
-            spans = core_tables.blob_to_array(spans)
+            spans = eti_storage.blob_to_array(spans)
             stable_id = transcript.pop("transcript_stable_id")
             yield TranscriptData(
                 **{
@@ -419,7 +419,7 @@ class GeneView(eti_storage.DuckdbParquetBase, eti_storage.ViewMixin):
             msg = f"No CDS spans found for {transcript=}"
             raise ValueError(msg)
 
-        spans = core_tables.blob_to_array(spans)
+        spans = eti_storage.blob_to_array(spans)
         stable_id = data.pop("cds_stable_id")
         yield CdsData(
             **{
@@ -465,7 +465,7 @@ class GeneView(eti_storage.DuckdbParquetBase, eti_storage.ViewMixin):
 
         transcript = dict(zip(columns, record, strict=True))
         spans = transcript.pop("transcript_spans")
-        spans = core_tables.blob_to_array(spans)
+        spans = eti_storage.blob_to_array(spans)
         stable_id = transcript.pop("transcript_stable_id")
         return TranscriptData(
             **{

@@ -19,8 +19,7 @@ def array_to_blob(data: numpy.ndarray) -> bytes:
     with io.BytesIO() as out:
         numpy.save(out, data)
         out.seek(0)
-        output = out.read()
-    return output
+        return out.read()
 
 
 @array_to_blob.register
@@ -33,8 +32,7 @@ def _(data: bytes) -> bytes:
 def blob_to_array(data: bytes) -> numpy.ndarray:
     with io.BytesIO(data) as out:
         out.seek(0)
-        result = numpy.load(out)
-    return result
+        return numpy.load(out)
 
 
 @blob_to_array.register
