@@ -224,7 +224,7 @@ class TranscriptAttrRecord:
             "start": int(self.start),
             "stop": int(self.stop),
             "strand": int(self.strand),
-            "transcript_spans": array_to_blob(self.transcript_spans),
+            "transcript_spans": eti_storage.array_to_blob(self.transcript_spans),
             "cds_spans": cds_blob,
             "transcript_stable_id": self.transcript_stable_id,
             "cds_stable_id": self.cds_stable_id,

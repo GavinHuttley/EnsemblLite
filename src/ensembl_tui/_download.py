@@ -216,8 +216,7 @@ def download_aligns(
 
     site_map = eti_site_map.get_site_map(config.host)
     remote_template = (
-        f"{config.remote_path}/release-{config.release}/{site_map.alignments_path}/"
-        "{}"
+        f"{config.remote_path}/release-{config.release}/{site_map.alignments_path}/{{}}"
     )
 
     msg = "Downloading alignments"
@@ -280,8 +279,7 @@ def download_homology(
 
     site_map = eti_site_map.get_site_map(config.host)
     remote_template = (
-        f"{config.remote_path}/release-{config.release}/{site_map.homologies_path}/"
-        "{}"
+        f"{config.remote_path}/release-{config.release}/{site_map.homologies_path}/{{}}"
     )
 
     local = config.staging_homologies

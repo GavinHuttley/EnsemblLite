@@ -25,7 +25,7 @@ def make_gene_attr(records: list[dict]) -> eti_annots.GeneView:
         "description TEXT",
     )
     columns = [c.split()[0] for c in schema]
-    sql = f"""CREATE TABLE IF NOT EXISTS gene_attr ({','.join(schema)})"""
+    sql = f"""CREATE TABLE IF NOT EXISTS gene_attr ({",".join(schema)})"""
     conn = duckdb.connect(":memory:")
     conn.sql(sql)
     sql = "INSERT INTO gene_attr VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)"

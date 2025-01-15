@@ -27,9 +27,9 @@ class register_ensembl_site_map:
         if not domain:
             raise ValueError("cannot have empty string domain")
 
-        assert (
-            domain not in _ensembl_site_map
-        ), f"{domain!r} already in {list(_ensembl_site_map)}"
+        assert domain not in _ensembl_site_map, (
+            f"{domain!r} already in {list(_ensembl_site_map)}"
+        )
 
         self._domain = domain
 

@@ -277,7 +277,7 @@ def read_config(
     release = parser.get("release", "release")
     host = parser.get("remote path", "host")
     remote_path = parser.get("remote path", "path")
-    remote_path = remote_path[:-1] if remote_path.endswith("/") else remote_path
+    remote_path = remote_path.removesuffix("/")
     # paths
     staging_path = _standardise_path(parser.get("local path", "staging_path"), root_dir)
     install_path = _standardise_path(parser.get("local path", "install_path"), root_dir)
