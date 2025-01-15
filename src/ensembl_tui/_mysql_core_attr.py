@@ -1,13 +1,13 @@
 import collections
 import dataclasses
 import functools
-import io
 import pathlib
 import typing
 
 import duckdb
 import numpy
 
+from ensembl_tui import _storage_mixin as eti_storage
 from ensembl_tui import _util as eti_util
 
 TRANSCRIPT_ATTR_SCHEMA = (
@@ -35,26 +35,6 @@ GENE_ATTR_SCHEMA = (
     "symbol TEXT",
 )
 GENE_ATTR_COLS = eti_util.make_column_constant(GENE_ATTR_SCHEMA)
-
-
-def array_to_blob(data: numpy.ndarray) -> bytes:
-    """writes a numpy array to bytes using numpy.save
-
-    Notes
-    -----
-    This is robust across platforms as it saves both the type and shape
-    """
-    with io.BytesIO() as out:
-        numpy.save(out, data)
-        out.seek(0)
-        return out.read()
-
-
-def blob_to_array(data: bytes) -> numpy.ndarray:
-    """reverses the process of array_to_blob"""
-    with io.BytesIO(data) as out:
-        out.seek(0)
-        return numpy.load(out)
 
 
 # https://asia.ensembl.org/info/docs/api/core/core_schema.html
@@ -232,7 +212,11 @@ class TranscriptAttrRecord:
         return self.transcript_spans.max()
 
     def to_record(self, columns: tuple[str]) -> tuple:
-        cds_blob = array_to_blob(self.cds_spans) if self.cds_spans is not None else None
+        cds_blob = (
+            eti_storage.array_to_blob(self.cds_spans)
+            if self.cds_spans is not None
+            else None
+        )
         mapping = {
             "transcript_id": self.transcript_id,
             "gene_id": self.gene_id,
@@ -240,7 +224,7 @@ class TranscriptAttrRecord:
             "start": int(self.start),
             "stop": int(self.stop),
             "strand": int(self.strand),
-            "transcript_spans": array_to_blob(self.transcript_spans),
+            "transcript_spans": eti_storage.array_to_blob(self.transcript_spans),
             "cds_spans": cds_blob,
             "transcript_stable_id": self.transcript_stable_id,
             "cds_stable_id": self.cds_stable_id,
@@ -378,13 +362,13 @@ def make_transcript_attr(con: duckdb.DuckDBPyConnection) -> duckdb.DuckDBPyConne
     con.sql(sql)
     # the transcript_attr schema
     value_placeholder = "?, " * len(TRANSCRIPT_ATTR_COLS)
-    sql = f"""CREATE TABLE transcript_attr ({','.join(TRANSCRIPT_ATTR_SCHEMA)})"""
+    sql = f"""CREATE TABLE transcript_attr ({",".join(TRANSCRIPT_ATTR_SCHEMA)})"""
     con.sql(sql)
     values = [
         r.to_record(TRANSCRIPT_ATTR_COLS) for r in get_transcript_attr_records(con)
     ]
 
-    sql = f"""INSERT INTO transcript_attr ({','.join(TRANSCRIPT_ATTR_COLS)}) VALUES ({value_placeholder})"""
+    sql = f"""INSERT INTO transcript_attr ({",".join(TRANSCRIPT_ATTR_COLS)}) VALUES ({value_placeholder})"""
     con.executemany(sql, values)
     return con
 

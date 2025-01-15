@@ -7,6 +7,7 @@ import pytest
 import ensembl_tui._config as eti_config
 import ensembl_tui._ingest_annotation as eti_db_ingest
 import ensembl_tui._mysql_core_attr as eti_tables
+from ensembl_tui import _storage_mixin as eti_storage
 
 TRANSLATION_SCHEMA = (
     "transcript_id INTEGER",
@@ -193,29 +194,13 @@ def test_install_features_invalid(invalid_downloaded_cfg):
         app.main("saccharomyces_cerevisiae")
 
 
-@pytest.mark.parametrize(
-    "data",
-    [
-        numpy.array([1, 2, 3], dtype=numpy.int32),
-        numpy.array([[1, 2, 3], [4, 5, 6]], dtype=numpy.int32),
-        numpy.array([[1, 2, 3], [4, 5, 6]], dtype=numpy.uint8),
-    ],
-)
-def test_array_blob_interconvert(data):
-    blob = eti_tables.array_to_blob(data)
-    assert isinstance(blob, bytes)
-    back = eti_tables.blob_to_array(blob)
-    assert numpy.array_equal(data, back)
-    assert data.dtype == back.dtype
-
-
 @pytest.fixture
 def empty_db_ev_transcript():
     conn = duckdb.connect()
     conn.sql(
         f"""
-        CREATE TABLE exon_view ({', '.join(EXON_VIEW_SCHEMA)});
-        CREATE TABLE translation ({', '.join(TRANSLATION_SCHEMA)});
+        CREATE TABLE exon_view ({", ".join(EXON_VIEW_SCHEMA)});
+        CREATE TABLE translation ({", ".join(TRANSLATION_SCHEMA)});
         """,
     )
     return conn
@@ -646,6 +631,6 @@ def test_make_transcript_attr(mixed_data):
     (result,) = conn.sql(
         "SELECT cds_spans FROM transcript_attr WHERE transcript_id = 12",
     ).fetchone()
-    spans = eti_tables.blob_to_array(result)
+    spans = eti_storage.blob_to_array(result)
     expect = numpy.array([[900, 1000], [1100, 1200], [1300, 1400]], dtype=numpy.int32)
     assert numpy.allclose(spans, expect)

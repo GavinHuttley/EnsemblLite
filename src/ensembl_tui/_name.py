@@ -19,7 +19,7 @@ _db_types = (
     "compara",
     "mart",
 )
-_db_type = re.compile(f'([.]{"|".join(_db_types)}[.])')
+_db_type = re.compile(f"([.]{'|'.join(_db_types)}[.])")
 _name_delim = re.compile("_")
 
 
