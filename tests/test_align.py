@@ -590,3 +590,9 @@ def test_aligndb_post_init_failure(tmp_path):
     outfile.write_text("blah")
     with pytest.raises(OSError):
         eti_align.AlignDb(source="/non/existent/directory")
+
+
+def test_aligndb_close(db_align):
+    db_align.close()
+    with pytest.raises(duckdb.duckdb.ConnectionException):
+        db_align.num_records()

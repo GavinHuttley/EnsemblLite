@@ -288,6 +288,12 @@ class AlignDb(eti_storage.DuckdbParquetBase):
     def num_records(self) -> int:
         return self.conn.sql(f"SELECT COUNT(*) from {self._tables[0]}").fetchone()[0]
 
+    def close(self) -> None:
+        """closes duckdb and h5py storage"""
+        if self.gap_store:
+            self.gap_store.close()
+        self.conn.close()
+
 
 def get_alignment(
     align_db: AlignDb,

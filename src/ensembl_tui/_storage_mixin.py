@@ -95,8 +95,6 @@ class Hdf5Mixin(eti_util.SerialisableMixin):
         """closes the hdf5 file"""
         # hdf5 dumps content to stdout if resource already closed, so
         # we trap that here, and capture expected exceptions raised in the process
-        if "open" not in locals():
-            return
         with (
             open(os.devnull, "w") as devnull,  # noqa: PTH123
             contextlib.redirect_stderr(devnull),
