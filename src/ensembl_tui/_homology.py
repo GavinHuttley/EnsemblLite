@@ -228,5 +228,6 @@ class collect_seqs:
         return make_unaligned_seqs(
             data=seqs,
             moltype="dna",
-            info=dict(source=homologs.source),
+            info={"source": homologs.source},
+            new_type=True,
         )

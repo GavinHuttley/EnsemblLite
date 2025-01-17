@@ -36,7 +36,7 @@ def test_get_genes(small_install_path):
         ),
     )
     # we check we can make a aa seq which has the correct start and end
-    aa = str(gene.trim_stop_codon().get_translation(incomplete_ok=True))
+    aa = str(gene.get_translation(trim_stop=True, incomplete_ok=True))
     # expected values from ensembl.org
     assert aa.startswith("MTNSSEFTDVLQS")
     assert aa.endswith("TIMNRINYKLQ")

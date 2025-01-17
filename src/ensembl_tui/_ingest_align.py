@@ -18,7 +18,7 @@ _no_gaps = numpy.array([], dtype=numpy.int32)
 
 
 def seq2gaps(record: dict) -> eti_align.AlignRecord:
-    seq = make_seq(record.pop("seq"))
+    seq = make_seq(record.pop("seq"), new_type=True, moltype="dna")
     indel_map, _ = seq.parse_out_gaps()
     if indel_map.num_gaps:
         record["gap_spans"] = numpy.array(
