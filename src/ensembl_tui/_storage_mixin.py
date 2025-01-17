@@ -6,9 +6,10 @@ import os
 import pathlib
 
 import duckdb
+import h5py
 import numpy
 import typing_extensions
-import h5py
+
 from ensembl_tui import _util as eti_util
 
 ReturnType = tuple[str, tuple]  # the sql statement and corresponding values
@@ -76,7 +77,7 @@ class Hdf5Mixin(eti_util.SerialisableMixin):
     def __getstate__(self) -> dict:
         if set(self.mode) & {"w", "a"}:
             raise NotImplementedError(f"pickling not supported for mode={self.mode!r}")
-        return self._init_vals.copy() # type: ignore
+        return self._init_vals.copy()  # type: ignore
 
     def __setstate__(self, state: dict) -> None:
         obj = self.__class__(**state)
