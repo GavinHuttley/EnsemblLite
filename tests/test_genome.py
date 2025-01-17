@@ -1,5 +1,3 @@
-import pathlib
-
 import pytest
 
 from ensembl_tui import _genome as eti_genome
@@ -21,7 +19,6 @@ def test_get_seq_feature_seq_correct(yeast):
     assert raw_seq.endswith("ATAAGAAATTCCATAAATAG")
 
 
-@pytest.mark.xfail(reason="Need to fix cogent3 to apply feature name to new sequence")
 def test_get_seq_feature_seq_correct_name(yeast):
     # need to modify cogent3 so it applies the feature name
     # to the new sequence
@@ -122,26 +119,6 @@ def test_get_feature_child_parent(worm_db):
     got = db.get_feature_parent(transcript)
     assert isinstance(got, type(gene))
     assert got.stable_id == gene.stable_id
-
-
-@pytest.fixture(params=("\n", "\r\n"))
-def fasta_data(DATA_DIR, tmp_path, request):
-    data = pathlib.Path(DATA_DIR / "c_elegans_WS199_shortened.fasta").read_text()
-    outpath = tmp_path / "demo.fasta"
-    outpath.write_text(data, newline=request.param)
-    return outpath
-
-
-def test_faster_fasta(fasta_data):
-    from cogent3.parse.fasta import MinimalFastaParser
-
-    from ensembl_tui._faster_fasta import bytes_to_array, quicka_parser
-
-    expect = {
-        n: bytes_to_array(s.encode("utf8")) for n, s in MinimalFastaParser(fasta_data)
-    }
-    got = dict(quicka_parser(fasta_data))
-    assert (got["I"] == expect["I"]).all()
 
 
 def test_genome_segment():

@@ -4,16 +4,19 @@ import uuid
 from collections import defaultdict
 from dataclasses import dataclass
 
+import cogent3
 import h5py
 import numpy
 import typing_extensions
 from cogent3.app.composable import define_app
-from cogent3.core.alignment import Aligned, Alignment
+from cogent3.core import new_alignment as c3_align
 from cogent3.core.location import _DEFAULT_GAP_DTYPE, IndelMap
 
 from ensembl_tui import _genome as eti_genome
 from ensembl_tui import _storage_mixin as eti_storage
 from ensembl_tui import _util as eti_util
+
+DNA = cogent3.get_moltype("dna", new_type=True)
 
 _no_gaps = numpy.array([], dtype=_DEFAULT_GAP_DTYPE)
 
@@ -285,21 +288,28 @@ class AlignDb(eti_storage.DuckdbParquetBase):
     def num_records(self) -> int:
         return self.conn.sql(f"SELECT COUNT(*) from {self._tables[0]}").fetchone()[0]
 
+    def close(self) -> None:
+        """closes duckdb and h5py storage"""
+        if self.gap_store:
+            self.gap_store.close()
+        self.conn.close()
+
 
 def get_alignment(
     align_db: AlignDb,
-    genomes: dict,
+    genomes: dict[str, eti_genome.Genome],
     ref_species: str,
     seqid: str,
     ref_start: int | None = None,
     ref_end: int | None = None,
     namer: typing.Callable | None = None,
     mask_features: list[str] | None = None,
-) -> typing.Iterable[Alignment]:
+) -> typing.Iterable[c3_align.Alignment]:
     """yields cogent3 Alignments"""
 
     if ref_species not in genomes:
-        raise ValueError(f"unknown species {ref_species!r}")
+        msg = f"unknown species {ref_species!r}"
+        raise ValueError(msg)
 
     align_records = align_db.get_records_matching(
         species=ref_species,
@@ -322,7 +332,7 @@ def get_alignment(
                 genome_start = align_record.start
                 genome_end = align_record.stop
                 gap_pos, gap_lengths = align_record.gap_data
-                gaps = IndelMap(
+                imap = IndelMap(
                     gap_pos=gap_pos,
                     gap_lengths=gap_lengths,
                     parent_length=genome_end - genome_start,
@@ -346,14 +356,15 @@ def get_alignment(
                     seq_start = seq_start - genome_start
                     seq_end = seq_end - genome_start
 
-                align_start = gaps.get_align_index(seq_start)
-                align_end = gaps.get_align_index(seq_end)
+                align_start = imap.get_align_index(seq_start)
+                align_end = imap.get_align_index(seq_end)
                 break
         else:
             msg = f"no matching alignment record for {ref_species!r}"
             raise ValueError(msg)
 
         seqs = {}
+        gaps = {}
         for align_record in block:
             record_species = align_record.species
             genome = genomes[record_species]
@@ -362,7 +373,7 @@ def get_alignment(
             genome_start = align_record.start
             genome_end = align_record.stop
             gap_pos, gap_lengths = align_record.gap_data
-            gaps = IndelMap(
+            imap = IndelMap(
                 gap_pos=gap_pos,
                 gap_lengths=gap_lengths,
                 parent_length=genome_end - genome_start,
@@ -370,12 +381,12 @@ def get_alignment(
 
             # We use the alignment indices derived for the reference sequence
             # above
-            seq_start = gaps.get_seq_index(align_start)
-            seq_end = gaps.get_seq_index(align_end)
+            seq_start = imap.get_seq_index(align_start)
+            seq_end = imap.get_seq_index(align_end)
             seq_length = seq_end - seq_start
             if align_record.strand == "-":
                 # if it's neg strand, the alignment start is the genome stop
-                seq_start = gaps.parent_length - seq_end
+                seq_start = imap.parent_length - seq_end
 
             s = genome.get_seq(
                 seqid=align_record.seqid,
@@ -385,7 +396,7 @@ def get_alignment(
                 with_annotations=False,
             )
             # we now trim the gaps for this sequence to the sub-alignment
-            gaps = gaps[align_start:align_end]
+            imap = imap[align_start:align_end]
 
             if align_record.strand == "-":
                 s = s.rc()
@@ -394,13 +405,17 @@ def get_alignment(
                 strand_symbol = -1 if align_record.strand == "-" else 1
                 s.name = f"{s.name}:{strand_symbol}"
 
-            aligned = Aligned(gaps, s)
-            if aligned.name not in seqs:
-                seqs[aligned.name] = aligned
-            elif str(aligned) == str(seqs[aligned.name]):
+            if s.name in seqs:
                 print(f"duplicated {s.name}")
+            seqs[s.name] = numpy.array(s)
+            gaps[s.name] = imap.array
 
-        aln = Alignment(list(seqs.values()))
+        aln_data = c3_align.AlignedSeqsData.from_seqs_and_gaps(
+            seqs=seqs,
+            gaps=gaps,
+            alphabet=DNA.most_degen_alphabet(),
+        )
+        aln = c3_align.Alignment(seqs_data=aln_data, moltype=DNA)
         aln.annotation_db = genome.annotation_db
         if mask_features:
             aln = aln.with_masked_annotations(biotypes=mask_features)
@@ -428,7 +443,7 @@ class construct_alignment:  # noqa: N801
         self._mask_features = mask_features
         self._sep = sep
 
-    def main(self, segment: eti_genome.genome_segment) -> list[Alignment]:
+    def main(self, segment: eti_genome.genome_segment) -> list[c3_align.Alignment]:
         results = []
         for aln in get_alignment(
             self._align_db,

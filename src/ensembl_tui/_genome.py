@@ -1,23 +1,25 @@
 import dataclasses
 import functools
 import pathlib
-import re
 import sys
 import typing
 import uuid
 from abc import ABC, abstractmethod
+from collections.abc import Callable
 from typing import Any
 
+import cogent3
 import h5py
 import numpy
-from cogent3 import get_moltype, make_seq
 from cogent3.app.composable import define_app
+from cogent3.core import new_alphabet
 from cogent3.core.annotation import Feature
 from cogent3.core.annotation_db import (
     OptionalInt,
     OptionalStr,
 )
-from cogent3.core.sequence import Sequence
+from cogent3.core.new_sequence import Sequence
+from cogent3.parse.fasta import iter_fasta_records
 from cogent3.util.table import Table
 from numpy.typing import NDArray
 
@@ -26,19 +28,16 @@ from ensembl_tui import _config as eti_config
 from ensembl_tui import _species as eti_species
 from ensembl_tui import _storage_mixin as eti_storage
 from ensembl_tui import _util as eti_util
-from ensembl_tui._faster_fasta import quicka_parser
 
 SEQ_STORE_NAME = "genome.seqs-hdf5_blosc2"
 
-_typed_id = re.compile(
-    r"\b[a-z]+:",
-    flags=re.IGNORECASE,
-)  # ensembl stableid's prefixed by the type
-_feature_id = re.compile(r"(?<=\bID=)[^;]+")
-_exon_id = re.compile(r"(?<=\bexon_id=)[^;]+")
-_parent_id = re.compile(r"(?<=\bParent=)[^;]+")
-_symbol = re.compile(r"(?<=\bName=)[^;]+")
-_description = re.compile(r"(?<=\bdescription=)[^;]+")
+DNA = cogent3.get_moltype("dna", new_type=True)
+alphabet = DNA.most_degen_alphabet()
+bytes_to_array = new_alphabet.bytes_to_array(
+    chars=alphabet.as_bytes(),
+    dtype=numpy.uint8,
+    delete=b" \n\r\t",
+)
 
 
 def _rename(label: str) -> str:
@@ -47,7 +46,11 @@ def _rename(label: str) -> str:
 
 @define_app
 class fasta_to_hdf5:  # noqa: N801
-    def __init__(self, config: eti_config.Config, label_to_name=_rename) -> None:
+    def __init__(
+        self,
+        config: eti_config.Config,
+        label_to_name: Callable[[str], str] = _rename,
+    ) -> None:
         self.config = config
         self.label_to_name = label_to_name
 
@@ -63,8 +66,11 @@ class fasta_to_hdf5:  # noqa: N801
 
         src_dir = src_dir / "fasta"
         for path in src_dir.glob("*.fa.gz"):
-            for label, seq in quicka_parser(path):
-                seqid = self.label_to_name(label)
+            for seqid, seq in iter_fasta_records(
+                path,
+                converter=bytes_to_array,
+                label_to_name=self.label_to_name,
+            ):
                 seq_store.add_record(seq, seqid)
                 del seq
 
@@ -125,21 +131,15 @@ class str2arr:  # noqa: N801
     """convert string to array of uint8"""
 
     def __init__(self, moltype: str = "dna", max_length: int | None = None) -> None:
-        moltype = get_moltype(moltype)
-        self.canonical = "".join(moltype)
+        mt = cogent3.get_moltype(moltype, new_type=True)
+        self.alphabet = mt.most_degen_alphabet()
         self.max_length = max_length
-        extended = "".join(list(moltype.alphabets.degen))
-        self.translation = b"".maketrans(
-            extended.encode("utf8"),
-            "".join(chr(i) for i in range(len(extended))).encode("utf8"),
-        )
 
     def main(self, data: str) -> numpy.ndarray:
         if self.max_length:
             data = data[: self.max_length]
 
-        b = data.encode("utf8").translate(self.translation)
-        return numpy.array(memoryview(b), dtype=numpy.uint8)
+        return self.alphabet.to_indices(data)
 
 
 @define_app
@@ -147,21 +147,14 @@ class arr2str:  # noqa: N801
     """convert array of uint8 to str"""
 
     def __init__(self, moltype: str = "dna", max_length: int | None = None) -> None:
-        moltype = get_moltype(moltype)
-        self.canonical = "".join(moltype)
+        mt = cogent3.get_moltype(moltype, new_type=True)
+        self.alphabet = mt.most_degen_alphabet()
         self.max_length = max_length
-        extended = "".join(list(moltype.alphabets.degen))
-        self.translation = b"".maketrans(
-            "".join(chr(i) for i in range(len(extended))).encode("utf8"),
-            extended.encode("utf8"),
-        )
 
     def main(self, data: numpy.ndarray) -> str:
         if self.max_length:
             data = data[: self.max_length]
-
-        b = data.tobytes().translate(self.translation)
-        return bytearray(b).decode("utf8")
+        return self.alphabet.from_indices(data)
 
 
 @dataclasses.dataclass
@@ -326,7 +319,7 @@ class Genome:
         stop: int | None = None,
         namer: typing.Callable | None = None,
         with_annotations: bool = True,
-    ) -> str:
+    ) -> Sequence:
         """returns annotated sequence
 
         Parameters
@@ -350,20 +343,20 @@ class Genome:
         -----
         Full annotations are bound to the instance.
         """
-        seq = self._seqs.get_seq_str(seqid=seqid, start=start, stop=stop)
+        seq = self._seqs.get_seq_arr(seqid=seqid, start=start, stop=stop)
         if namer:
             name = namer(self.species, seqid, start, stop)
         else:
             name = f"{self.species}:{seqid}:{start}-{stop}"
         # we use seqid to make the sequence here because that identifies the
         # parent seq identity, required for querying annotations
-        try:
-            seq = make_seq(seq, name=seqid, moltype="dna", annotation_offset=start or 0)
-        except TypeError:
-            # older version of cogent3
-            seq = make_seq(seq, name=seqid, moltype="dna")
-            seq.annotation_offset = start or 0
-
+        seq = cogent3.make_seq(
+            seq,
+            name=seqid,
+            moltype="dna",
+            annotation_offset=start or 0,
+            new_type=True,
+        )
         seq.name = name
         seq.annotation_db = self.annotation_db if with_annotations else None
         return seq

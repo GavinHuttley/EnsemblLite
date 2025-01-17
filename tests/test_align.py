@@ -88,6 +88,7 @@ def small_seqs():
         moltype="dna",
         array_align=False,
         info={"species": {"s1": "human", "s2": "mouse", "s3": "dog"}},
+        new_type=True,
     )
 
 
@@ -96,8 +97,8 @@ def make_records(start, end, block_id):
     records = []
     species = aln.info.species
     for seq in aln.seqs:
-        seqid, seq_start, seq_end, seq_strand = seq.data.parent_coordinates()
-        gs = seq.get_gapped_seq()
+        seqid, seq_start, seq_end, seq_strand = seq.parent_coordinates(seq_coords=True)
+        gs = seq.gapped_seq
         imap, s = gs.parse_out_gaps()
         if imap.num_gaps:
             gap_spans = numpy.array(
@@ -154,16 +155,6 @@ def test_aligndb_records_skip_duplicated_block_ids(small_records):
     count = agg.sql(sql).fetchone()[0]
     eti_ingest_align.add_records(conn=agg, gap_store=gs, records=small_records)
     assert agg.sql(sql).fetchone()[0] == count
-
-
-def _find_nth_gap_index(data: str, n: int) -> int:
-    num = -1
-    for i, c in enumerate(data):
-        if c == "-":
-            num += 1
-        if num == n:
-            return i
-    raise ValueError(f"{data=}, {n=}")
 
 
 # fixture to make synthetic GenomeSeqsDb and alignment db
@@ -233,7 +224,7 @@ def make_sample(two_aligns=False):
     genomes = {}
     for seq in aln.seqs:
         name = seq.name
-        seq = seq.data.degap()
+        seq = seq.seq
         if seq.name == "s2":
             seq = seq.rc()
             s2_genome = str(seq)
@@ -599,3 +590,9 @@ def test_aligndb_post_init_failure(tmp_path):
     outfile.write_text("blah")
     with pytest.raises(OSError):
         eti_align.AlignDb(source="/non/existent/directory")
+
+
+def test_aligndb_close(db_align):
+    db_align.close()
+    with pytest.raises(duckdb.duckdb.ConnectionException):
+        db_align.num_records()

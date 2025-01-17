@@ -6,6 +6,7 @@ import os
 import pathlib
 
 import duckdb
+import h5py
 import numpy
 import typing_extensions
 
@@ -69,15 +70,16 @@ def _make_table_sql(
 class Hdf5Mixin(eti_util.SerialisableMixin):
     """HDF5 sequence data storage"""
 
-    _file = None
-    _is_open = False
+    _file: h5py.File | None = None
+    _is_open: bool = False
+    mode: str = "r"
 
-    def __getstate__(self):
+    def __getstate__(self) -> dict:
         if set(self.mode) & {"w", "a"}:
             raise NotImplementedError(f"pickling not supported for mode={self.mode!r}")
-        return self._init_vals.copy()
+        return self._init_vals.copy()  # type: ignore
 
-    def __setstate__(self, state):
+    def __setstate__(self, state: dict) -> None:
         obj = self.__class__(**state)
         self.__dict__.update(obj.__dict__)
         # because we have a __del__ method, and self attributes point to
@@ -86,23 +88,24 @@ class Hdf5Mixin(eti_util.SerialisableMixin):
         obj._is_open = False
         obj._file = None
 
-    def __del__(self):
+    def __del__(self) -> None:
         self.close()
 
-    def close(self):
+    def close(self) -> None:
         """closes the hdf5 file"""
         # hdf5 dumps content to stdout if resource already closed, so
         # we trap that here, and capture expected exceptions raised in the process
-        with open(os.devnull, "w") as devnull:
-            with (
-                contextlib.redirect_stderr(devnull),
-                contextlib.redirect_stdout(devnull),
-            ):
-                with contextlib.suppress(ValueError, AttributeError):
-                    if self._is_open:
-                        self._file.flush()
+        with (
+            open(os.devnull, "w") as devnull,  # noqa: PTH123
+            contextlib.redirect_stderr(devnull),
+            contextlib.redirect_stdout(devnull),
+        ):
+            with contextlib.suppress(ValueError, AttributeError):
+                if self._is_open and self._file:
+                    self._file.flush()
 
-                with contextlib.suppress(AttributeError):
+            with contextlib.suppress(AttributeError):
+                if self._file:
                     self._file.close()
 
         self._is_open = False
