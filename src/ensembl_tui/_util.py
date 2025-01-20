@@ -36,6 +36,7 @@ try:
 except (NotImplementedError, ImportError):
     keep_running = contextlib.nullcontext
 
+CWD = pathlib.Path.cwd()
 
 HDF5_BLOSC2_KWARGS = hdf5plugin.Blosc2(
     cname="blosclz",
@@ -561,9 +562,9 @@ class category_indexer:  # noqa: N801
 
 
 @contextlib.contextmanager
-def tempdir() -> pathlib.Path:
-    """context manager returns a temporary directory"""
-    with tempfile.TemporaryDirectory() as temp_dir:
+def tempdir(working_dir: pathlib.Path | str | None = None) -> pathlib.Path:
+    """context manager returns a temporary directory in working_dir"""
+    with tempfile.TemporaryDirectory(dir=working_dir) as temp_dir:
         yield pathlib.Path(temp_dir)
 
 

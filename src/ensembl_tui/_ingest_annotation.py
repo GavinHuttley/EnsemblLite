@@ -49,7 +49,7 @@ def tempdb(
     if not source_db_path.exists():
         raise FileNotFoundError(source_db_path)
 
-    with eti_util.tempdir() as temp_dir:
+    with eti_util.tempdir(working_dir=eti_util.CWD) as temp_dir:
         temp_db_path = pathlib.Path(temp_dir) / source_db_path.name
         shutil.copy2(source_db_path, temp_db_path)
 
