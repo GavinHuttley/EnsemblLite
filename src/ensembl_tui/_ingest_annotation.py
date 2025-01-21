@@ -71,12 +71,18 @@ def migrate_schema(con: duckdb.DuckDBPyConnection, table_name: str) -> None:
     whose name ends in "strand".
     """
     sql = f"""
-    SELECT column_name FROM information_schema.columns
+    SELECT column_name, data_type
+    FROM information_schema.columns
     WHERE table_name = '{table_name}'
     AND column_name LIKE '%strand'"""
     names = con.sql(sql).to_df()
-    for n in names["column_name"].to_list():
-        if n.endswith("strand"):
+    names_types = zip(
+        names["column_name"].to_list(),
+        names["data_type"].to_list(),
+        strict=False,
+    )
+    for n, t in names_types:
+        if n.endswith("strand") and t == "BOOL":
             # assume any column name ending with "strand" is a
             # smallint (-1, 0, 1) for minus, unknown, plus strand
             sql = f"ALTER TABLE {table_name} ALTER COLUMN {n} SET DATA TYPE TINYINT;"
@@ -86,15 +92,21 @@ def migrate_schema(con: duckdb.DuckDBPyConnection, table_name: str) -> None:
     # this is required because duckdb import does not handle null timestamps
     # like '0000-00-00 00:00:00'
     sql = f"""
-    SELECT column_name
+    SELECT column_name, data_type
     FROM information_schema.columns
-    WHERE table_name = {table_name}
+    WHERE table_name = '{table_name}'
     AND data_type = 'TIMESTAMP';
     """
-    names = con.sql(f"DESCRIBE {table_name}").to_df()
-    for n in names["column_name"].to_list():
-        sql = f"ALTER TABLE {table_name} ALTER COLUMN {n} SET DATA TYPE TEXT;"
-        con.sql(sql)
+    names = con.sql(sql).to_df()
+    names_types = zip(
+        names["column_name"].to_list(),
+        names["data_type"].to_list(),
+        strict=False,
+    )
+    for n, t in names_types:
+        if t == "TIMESTAMP":
+            sql = f"ALTER TABLE {table_name} ALTER COLUMN {n} SET DATA TYPE TEXT;"
+            con.sql(sql)
 
 
 def make_mysql_connection(
@@ -171,6 +183,7 @@ def import_mysqldump(
     fix_start
         if True, columns ending in "_start" are adjusted from 1-based to 0-based
     """
+    migrate_schema(con, table_name)
     sql = f"INSERT INTO {table_name} SELECT * FROM read_csv_auto('{mysql_dump_path}', nullstr='\\N', header=false, ignore_errors=false, delim='\\t')"
     con.sql(sql)
     if fix_start:
