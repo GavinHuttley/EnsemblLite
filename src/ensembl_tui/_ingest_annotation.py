@@ -70,8 +70,6 @@ def migrate_schema(con: duckdb.DuckDBPyConnection, table_name: str) -> None:
     3 possible values (-1, 0, 1). So we explicitly set types for all columns
     whose name ends in "strand".
     """
-    sql = f"CREATE TABLE {table_name} AS SELECT * FROM mysqldb.{table_name} LIMIT 0"
-    con.sql(sql)
     sql = f"""
     SELECT column_name FROM information_schema.columns
     WHERE table_name = '{table_name}'
@@ -146,7 +144,9 @@ def make_table_template(
         db_user=db_user,
         db_path=outname,
     )
-    migrate_schema(con, table_name)
+    # we load the raw mysql schema from the ensembl mysql server
+    sql = f"CREATE TABLE {table_name} AS SELECT * FROM mysqldb.{table_name} LIMIT 0"
+    con.sql(sql)
     con.close()
     return outname
 
