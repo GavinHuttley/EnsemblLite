@@ -61,6 +61,7 @@ test = [
     "pandas",
     "pytest",
     "pytest-cov",
+    "pytest-timeout",
     "pytest-xdist",
     "ruff==0.9.1",
     "nox"]

@@ -6,6 +6,7 @@ from ensembl_tui import _mysql_core_attr as eti_db_attr
 
 
 @pytest.mark.internet
+@pytest.mark.timeout(10)
 def test_get_db_names(tmp_config):
     cfg = eti_config.read_config(tmp_config)
     db_names = eti_download.get_core_db_dirnames(cfg)

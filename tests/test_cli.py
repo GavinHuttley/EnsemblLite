@@ -13,6 +13,7 @@ RUNNER = CliRunner()
 
 @pytest.mark.slow
 @pytest.mark.internet
+@pytest.mark.timeout(120)
 def test_download(tmp_config):
     """runs download, install, drop according to a special test cfg"""
     tmp_dir = tmp_config.parent
