@@ -121,8 +121,8 @@ def tsv_with_start_cols(tmp_path):
     return tsv_path
 
 
-def test_import_mysql_table(db_with_start_columns, tsv_with_start_cols):
-    eti_db_ingest.import_mysql_table(
+def test_import_mysqldump(db_with_start_columns, tsv_with_start_cols):
+    eti_db_ingest.import_mysqldump(
         con=db_with_start_columns,
         mysql_dump_path=tsv_with_start_cols,
         table_name="demo_table",

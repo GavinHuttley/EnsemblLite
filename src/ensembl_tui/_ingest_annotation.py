@@ -151,7 +151,7 @@ def make_table_template(
     return outname
 
 
-def import_mysql_table(
+def import_mysqldump(
     *,
     con: duckdb.DuckDBPyConnection,
     mysql_dump_path: pathlib.Path,
@@ -223,7 +223,7 @@ def write_parquet(
     """
     dest_dir.mkdir(parents=True, exist_ok=True)
     with tempdb(db_templates / f"{table_name}.duckdb") as con:
-        import_mysql_table(
+        import_mysqldump(
             con=con,
             mysql_dump_path=dump_path,
             table_name=table_name,
