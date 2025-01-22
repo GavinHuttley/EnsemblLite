@@ -135,6 +135,7 @@ def cfg_just_genomes(empty_cfg):
 
 
 @pytest.mark.internet
+@pytest.mark.timeout(10)
 def test_read_config_compara_genomes(cfg_just_aligns):
     from ensembl_tui._species import Species
 
@@ -151,6 +152,7 @@ def test_read_config_compara_genomes(cfg_just_aligns):
 
 
 @pytest.mark.internet
+@pytest.mark.timeout(10)
 def test_read_config_genomes(cfg_just_genomes):
     from ensembl_tui._species import Species
 

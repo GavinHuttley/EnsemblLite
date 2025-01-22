@@ -70,14 +70,42 @@ def migrate_schema(con: duckdb.DuckDBPyConnection, table_name: str) -> None:
     3 possible values (-1, 0, 1). So we explicitly set types for all columns
     whose name ends in "strand".
     """
-    sql = f"CREATE TABLE {table_name} AS SELECT * FROM mysqldb.{table_name} LIMIT 0"
-    con.sql(sql)
-    # assume any column name ending with "strand" is a smallint (-1, 0, 1) for
-    # minus, unknown, plus strand
-    names = con.sql(f"DESCRIBE {table_name}").to_df()
-    for n in names["column_name"].to_list():
-        if n.endswith("strand"):
+    sql = f"""
+    SELECT column_name, data_type
+    FROM information_schema.columns
+    WHERE table_name = '{table_name}'
+    AND column_name LIKE '%strand'"""
+    names = con.sql(sql).to_df()
+    names_types = zip(
+        names["column_name"].to_list(),
+        names["data_type"].to_list(),
+        strict=False,
+    )
+    for n, t in names_types:
+        if n.endswith("strand") and t == "BOOL":
+            # assume any column name ending with "strand" is a
+            # smallint (-1, 0, 1) for minus, unknown, plus strand
             sql = f"ALTER TABLE {table_name} ALTER COLUMN {n} SET DATA TYPE TINYINT;"
+            con.sql(sql)
+
+    # change all timestamp columns to text
+    # this is required because duckdb import does not handle null timestamps
+    # like '0000-00-00 00:00:00'
+    sql = f"""
+    SELECT column_name, data_type
+    FROM information_schema.columns
+    WHERE table_name = '{table_name}'
+    AND data_type = 'TIMESTAMP';
+    """
+    names = con.sql(sql).to_df()
+    names_types = zip(
+        names["column_name"].to_list(),
+        names["data_type"].to_list(),
+        strict=False,
+    )
+    for n, t in names_types:
+        if t == "TIMESTAMP":
+            sql = f"ALTER TABLE {table_name} ALTER COLUMN {n} SET DATA TYPE TEXT;"
             con.sql(sql)
 
 
@@ -128,12 +156,14 @@ def make_table_template(
         db_user=db_user,
         db_path=outname,
     )
-    migrate_schema(con, table_name)
+    # we load the raw mysql schema from the ensembl mysql server
+    sql = f"CREATE TABLE {table_name} AS SELECT * FROM mysqldb.{table_name} LIMIT 0"
+    con.sql(sql)
     con.close()
     return outname
 
 
-def import_mysql_table(
+def import_mysqldump(
     *,
     con: duckdb.DuckDBPyConnection,
     mysql_dump_path: pathlib.Path,
@@ -153,6 +183,7 @@ def import_mysql_table(
     fix_start
         if True, columns ending in "_start" are adjusted from 1-based to 0-based
     """
+    migrate_schema(con, table_name)
     sql = f"INSERT INTO {table_name} SELECT * FROM read_csv_auto('{mysql_dump_path}', nullstr='\\N', header=false, ignore_errors=false, delim='\\t')"
     con.sql(sql)
     if fix_start:
@@ -205,7 +236,7 @@ def write_parquet(
     """
     dest_dir.mkdir(parents=True, exist_ok=True)
     with tempdb(db_templates / f"{table_name}.duckdb") as con:
-        import_mysql_table(
+        import_mysqldump(
             con=con,
             mysql_dump_path=dump_path,
             table_name=table_name,

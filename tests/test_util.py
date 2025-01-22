@@ -92,7 +92,7 @@ def test_valid_seq(name):
     assert valid_seq_file(name)
 
 
-@pytest.fixture(scope="function")
+@pytest.fixture
 def just_compara_cfg(tmp_config):
     # no genomes!
     parser = ConfigParser()
@@ -108,6 +108,7 @@ def just_compara_cfg(tmp_config):
 
 
 @pytest.mark.internet
+@pytest.mark.timeout(10)
 def test_just_compara(just_compara_cfg):
     # get species names from the alignment ref tree
     cfg = eti_config.read_config(just_compara_cfg)
@@ -175,6 +176,7 @@ def test_config_update_species(tmp_config):
 
 
 @pytest.mark.internet
+@pytest.mark.timeout(10)
 def test_cfg_to_dict(just_compara_cfg):
     cfg = eti_config.read_config(just_compara_cfg)
     data = cfg.to_dict()
