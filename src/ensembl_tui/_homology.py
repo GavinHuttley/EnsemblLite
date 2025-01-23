@@ -1,11 +1,9 @@
 import dataclasses
 import typing
 
-import blosc2
 import typing_extensions
 from cogent3 import make_table, make_unaligned_seqs
 from cogent3.app.composable import NotCompleted, define_app
-from cogent3.app.io import compress, decompress, pickle_it, unpickle_it
 from cogent3.app.typing import (
     SeqsCollectionType,
 )
@@ -14,12 +12,16 @@ from cogent3.util.io import PathType
 from ensembl_tui import _config as eti_config
 from ensembl_tui import _genome as eti_genome
 from ensembl_tui import _storage_mixin as eti_storage
+from ensembl_tui import _util as eti_util
 
-compressor = compress(compressor=blosc2.compress2)
-decompressor = decompress(decompressor=blosc2.decompress2)
-pickler = pickle_it()
-unpickler = unpickle_it()
-inflate = decompressor + unpickler
+HOMOLOGY_ATTR_SCHEMA = (
+    "rowid INTEGER PRIMARY KEY DEFAULT nextval('rowid_seq')",
+    "homology_id INTEGER",
+    "stableid TEXT",
+    "species_db TEXT",
+    "homology_type TEXT",
+)
+HOMOLOGY_ATTR_COLS = eti_util.make_column_constant(HOMOLOGY_ATTR_SCHEMA)
 
 
 @dataclasses.dataclass(slots=True)

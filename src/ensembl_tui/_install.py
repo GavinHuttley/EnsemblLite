@@ -4,7 +4,6 @@ from rich.progress import Progress
 
 from ensembl_tui import _config as eti_config
 from ensembl_tui import _genome as eti_genome
-from ensembl_tui import _homology as eti_homology
 from ensembl_tui import _ingest_align as ingest_aln
 from ensembl_tui import _ingest_annotation as eti_db_ingest
 from ensembl_tui import _ingest_homology as homology_ingest
@@ -133,32 +132,57 @@ def local_install_homology(
     loader = homology_ingest.load_homologies(
         allowed_species=set(config.db_names),
     )
-    if max_workers > 1:
-        loader = loader + eti_homology.pickler + eti_homology.compressor
-
-    msg = "Installing homologies"
     if progress is not None:
-        writing = progress.add_task(total=len(dirnames), description=msg, advance=0)
+        msg = "Loading homologies"
+        load_homs = progress.add_task(
+            total=len(dirnames),
+            description=msg,
+            advance=0,
+            transient=True,
+        )
 
     tasks = eti_util.get_iterable_tasks(
         func=loader,
         series=dirnames,
         max_workers=max_workers,
     )
-    db = homology_ingest.make_homology_aggregator_db()
+    results = {}
     for result in tasks:
-        if max_workers > 1:
-            # blosc compression applied during parallel processing
-            # inflate now
-            result = eti_homology.inflate(result)  # noqa: PLW2901
-
         for rel_type, records in result.items():
-            db.add_records(records=records, relationship_type=rel_type)
+            if rel_type not in results:
+                results[rel_type] = []
+            results[rel_type].extend(records)
 
         if progress is not None:
-            progress.update(writing, description=msg, advance=1)
+            progress.update(load_homs, description=msg, advance=1)
 
-    db.commit()
+    # we merge the homology groups
+    if progress is not None:
+        msg = "Aggregating homologies"
+        agg = progress.add_task(
+            total=len(results),
+            description=msg,
+            advance=0,
+            transient=True,
+        )
+
+    for rel_type, records in results.items():
+        results[rel_type] = homology_ingest.merge_grouped(records)
+
+        if progress is not None:
+            progress.update(agg, description=msg, advance=1)
+
+    # write the homology groups to in-memory db
+    if progress is not None:
+        msg = "Writing homologies"
+        write = progress.add_task(total=len(results), description=msg, advance=0)
+
+    db = homology_ingest.make_homology_aggregator_db()
+    for rel_type, records in results.items():
+        db.add_records(records=records, relationship_type=rel_type)
+        if progress is not None:
+            progress.update(write, description=msg, advance=1)
+
     homology_ingest.write_homology_views(agg=db, outdir=config.install_homologies)
     if verbose:
         eti_util.print_colour("\nFinished installing homologies", "yellow")
