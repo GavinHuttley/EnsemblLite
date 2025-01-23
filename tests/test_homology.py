@@ -233,6 +233,9 @@ def test_homdb_add_invalid_record():
     with pytest.raises(ValueError):
         agg.add_records(records=records, relationship_type="one2one")
 
+    with pytest.raises(ValueError):
+        agg.add_records(records=records, relationship_type=None)
+
 
 @pytest.mark.parametrize(
     "gene_id,rel_type",
@@ -287,6 +290,9 @@ def test_homdb_num_records(o2o_db):
     assert got.columns["count"][0] == 41
     got = homdb.count_distinct(species=True)
     assert got.shape == (9, 2)
+    got = homdb.num_records()
+    # from inspecting the original data we expect 5
+    assert got == 5
 
 
 @pytest.fixture
