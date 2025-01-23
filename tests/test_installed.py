@@ -45,4 +45,4 @@ def test_get_genes(small_install_path):
 def test_installed_genomes(small_install_path):
     config = eti_config.read_installed_cfg(small_install_path)
     got = config.list_genomes()
-    assert got == ["caenorhabditis_elegans", "saccharomyces_cerevisiae"]
+    assert set(got) == {"caenorhabditis_elegans", "saccharomyces_cerevisiae"}

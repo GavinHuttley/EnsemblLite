@@ -55,7 +55,6 @@ def o2o_db(DATA_DIR, tmp_dir):
     hom_groups = loader(raw)  # pylint: disable=not-callable
     for rel_type, data in hom_groups.items():
         agg.add_records(records=data, relationship_type=rel_type)
-    agg.commit()
     homol_ingest.write_homology_views(agg=agg, outdir=tmp_dir)
     homdb = eti_homology.HomologyDb(source=tmp_dir)
     return homdb, table
@@ -63,13 +62,13 @@ def o2o_db(DATA_DIR, tmp_dir):
 
 @pytest.mark.parametrize(
     "gene_id",
-    (
+    [
         "ENSGGOG00000026757",
         "ENSGGOG00000025053",
         "ENSGGOG00000022688",
         "ENSGGOG00000026221",
         "ENSGGOG00000024015",
-    ),
+    ],
 )
 def test_hdb(o2o_db, gene_id):
     homdb, table = o2o_db
@@ -82,15 +81,15 @@ def test_hdb(o2o_db, gene_id):
 @pytest.fixture
 def orth_records():
     return [
-        ("ortholog_one2one", {"1": "sp1", "2": "sp2"}),  # grp 1
-        ("ortholog_one2one", {"2": "sp2", "3": "sp3"}),  # grp 1
-        ("ortholog_one2one", {"4": "sp1", "5": "sp3"}),
+        ("ortholog_one2one", "sp1", "1", "sp2", "2"),  # grp 1
+        ("ortholog_one2one", "sp2", "2", "sp3", "3"),  # grp 1
+        ("ortholog_one2one", "sp1", "4", "sp3", "5"),  # grp 2
     ]
 
 
 @pytest.fixture
 def hom_records(orth_records):
-    return orth_records + [("ortholog_one2many", {"6": "sp2", "7": "sp3"})]
+    return [*orth_records, ("ortholog_one2many", "sp2", "6", "sp3", "7")]  # grp 3
 
 
 def test_hdb_get_related_groups(o2o_db):
@@ -105,7 +104,6 @@ def hom_hdb(hom_records, tmp_dir):
     agg = homol_ingest.make_homology_aggregator_db()
     for rel_type, data in groups.items():
         agg.add_records(records=data, relationship_type=rel_type)
-    agg.commit()
     homol_ingest.write_homology_views(agg=agg, outdir=tmp_dir)
     return eti_homology.HomologyDb(source=tmp_dir)
 
@@ -235,6 +233,9 @@ def test_homdb_add_invalid_record():
     with pytest.raises(ValueError):
         agg.add_records(records=records, relationship_type="one2one")
 
+    with pytest.raises(ValueError):
+        agg.add_records(records=records, relationship_type=None)
+
 
 @pytest.mark.parametrize(
     "gene_id,rel_type",
@@ -289,6 +290,9 @@ def test_homdb_num_records(o2o_db):
     assert got.columns["count"][0] == 41
     got = homdb.count_distinct(species=True)
     assert got.shape == (9, 2)
+    got = homdb.num_records()
+    # from inspecting the original data we expect 5
+    assert got == 5
 
 
 @pytest.fixture
