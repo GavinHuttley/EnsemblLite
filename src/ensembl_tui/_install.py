@@ -156,8 +156,8 @@ def local_install_homology(
         if progress is not None:
             progress.update(load_homs, description=msg, advance=1)
 
-    # we merge the homology groups
     if progress is not None:
+        progress.remove_task(load_homs)
         msg = "Aggregating homologies"
         agg = progress.add_task(
             total=len(results),
@@ -166,6 +166,7 @@ def local_install_homology(
             transient=True,
         )
 
+    # we merge the homology groups
     for rel_type, records in results.items():
         results[rel_type] = homology_ingest.merge_grouped(records)
 
@@ -174,7 +175,8 @@ def local_install_homology(
 
     # write the homology groups to in-memory db
     if progress is not None:
-        msg = "Writing homologies"
+        progress.remove_task(agg)
+        msg = "Installing homologies"
         write = progress.add_task(total=len(results), description=msg, advance=0)
 
     db = homology_ingest.make_homology_aggregator_db()
