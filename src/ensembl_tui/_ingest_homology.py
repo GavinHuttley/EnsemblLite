@@ -1,17 +1,14 @@
 # consumes homology data from Ensembl tsv files and writes a parquet file
 # for representation by _homology.HomologyDb
 import pathlib
-import shutil
 import typing
 
 import duckdb
 from cogent3.app import typing as c3_types
 from cogent3.app.composable import LOADER, define_app
 
-from ensembl_tui import _config as eti_config
 from ensembl_tui import _homology as eti_homology
 from ensembl_tui import _ingest_annotation as eti_annotation
-from ensembl_tui import _util as eti_util
 
 T = dict[str, tuple[eti_homology.homolog_group, ...]]
 
@@ -175,37 +172,3 @@ def write_homology_views(agg: HomologyAggregator, outdir: pathlib.Path) -> None:
         table_name="homology_groups_attr",
         dest_dir=outdir,
     )
-
-
-def local_install_homology(
-    config: eti_config.Config,
-    force_overwrite: bool = False,
-    max_workers: int = 1,
-    verbose: bool = False,
-):
-    from rich.progress import track
-
-    if force_overwrite:
-        shutil.rmtree(config.install_homologies, ignore_errors=True)
-
-    config.install_homologies.mkdir(parents=True, exist_ok=True)
-
-    tsv_paths = []
-    for sp in config.db_names:
-        path = config.staging_homologies / sp
-        tsv_paths.extend(list(path.glob("*.tsv*")))
-
-    if verbose:
-        eti_util.print_colour(f"homologies {max_workers=}", "yellow")
-
-    loader = load_homologies(allowed_species=set(config.db_names))
-
-    tasks = eti_util.get_iterable_tasks(
-        func=loader,
-        series=tsv_paths,
-        max_workers=max_workers,
-    )
-    agg = make_homology_aggregator_db()
-    for grouped in track(tasks, total=len(tsv_paths), description="aggregating"):
-        for rel_type, records in grouped.items():
-            agg.add_records(records=records, relationship_type=rel_type)
