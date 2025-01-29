@@ -452,6 +452,7 @@ def get_iterable_tasks(
     max_workers: int | None,
     **kwargs: dict,
 ) -> typing.Iterator:
+    max_workers = max_workers or 1
     if max_workers == 1:
         return map(func, series)
     return as_completed(func, series, max_workers=max_workers, **kwargs)
