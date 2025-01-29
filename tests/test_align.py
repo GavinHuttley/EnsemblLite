@@ -127,33 +127,26 @@ def small_records():
 
 
 def empty_align_agg_gap_store():
-    agg = eti_ingest_align.make_alignment_aggregator_db()
-    gs = eti_align.GapStore(
-        source=":memory:",
-        in_memory=True,
-        mode="w",
-        align_name="demo",
-    )
-    return agg, gs
+    return eti_ingest_align.make_alignment_aggregator_db()
 
 
 def test_aligndb_records_match_input(small_records):
     import copy
 
     orig_records = copy.deepcopy(small_records)
-    agg, gs = empty_align_agg_gap_store()
-    eti_ingest_align.add_records(records=small_records, conn=agg, gap_store=gs)
-    db = eti_align.AlignDb(db=agg, gap_store=gs, source=":memory:")
+    agg = empty_align_agg_gap_store()
+    eti_ingest_align.add_records(records=small_records, conn=agg)
+    db = eti_align.AlignDb(db=agg, source=":memory:")
     got = next(iter(db.get_records_matching(species="human", seqid="s1")))
     assert got == set(orig_records)
 
 
 def test_aligndb_records_skip_duplicated_block_ids(small_records):
-    agg, gs = empty_align_agg_gap_store()
-    eti_ingest_align.add_records(conn=agg, gap_store=gs, records=small_records)
+    agg = empty_align_agg_gap_store()
+    eti_ingest_align.add_records(conn=agg, records=small_records)
     sql = "SELECT COUNT(*) FROM align_blocks"
     count = agg.sql(sql).fetchone()[0]
-    eti_ingest_align.add_records(conn=agg, gap_store=gs, records=small_records)
+    eti_ingest_align.add_records(conn=agg, records=small_records)
     assert agg.sql(sql).fetchone()[0] == count
 
 
@@ -161,9 +154,9 @@ def test_aligndb_records_skip_duplicated_block_ids(small_records):
 # based on a given alignment
 @pytest.fixture
 def genomedbs_aligndb(small_records):
-    agg, gs = empty_align_agg_gap_store()
-    eti_ingest_align.add_records(records=small_records, conn=agg, gap_store=gs)
-    align_db = eti_align.AlignDb(source=":memory:", db=agg, gap_store=gs)
+    agg = empty_align_agg_gap_store()
+    eti_ingest_align.add_records(records=small_records, conn=agg)
+    align_db = eti_align.AlignDb(source=":memory:", db=agg)
     seqs = small_seqs().degap()
     species = seqs.info.species
     data = seqs.to_dict()
@@ -247,15 +240,8 @@ def make_sample(two_aligns=False):
         align_records += _update_records(s2_genome, aln, "1", 22, 30)
 
     maker = eti_ingest_align.make_alignment_aggregator_db()
-    gap_store = eti_align.GapStore(
-        source=":memory:",
-        in_memory=True,
-        mode="w",
-        align_name="demo",
-    )
-
-    eti_ingest_align.add_records(conn=maker, gap_store=gap_store, records=align_records)
-    align_db = eti_align.AlignDb(db=maker, gap_store=gap_store, source=":memory:")
+    eti_ingest_align.add_records(conn=maker, records=align_records)
+    align_db = eti_align.AlignDb(db=maker, source=":memory:")
     return genomes, align_db
 
 
@@ -488,52 +474,6 @@ def test_write_alignments():
     assert len(aln[0]) == 3
 
 
-@pytest.mark.parametrize(
-    "gaps",
-    [numpy.array([[0, 24], [2, 3]], dtype=int), numpy.array([], dtype=int)],
-)
-def test_gapstore_add_retrieve(gaps):
-    gap_store = eti_align.GapStore(
-        source="stuff",
-        in_memory=True,
-        mode="w",
-        align_name="demo",
-    )
-    gap_store.add_record(index=20, gaps=gaps)
-    got = gap_store.get_record(index=20)
-    assert got is not gaps
-    assert (got == gaps).all()
-
-
-def test_gapstore_add_duplicate():
-    a = numpy.array([[0, 24], [2, 3]], dtype=int)
-    gap_store = eti_align.GapStore(
-        source="stuff",
-        in_memory=True,
-        mode="w",
-        align_name="demo",
-    )
-    gap_store.add_record(index=20, gaps=a)
-    # adding it again has now effect
-    gap_store.add_record(index=20, gaps=a)
-    got = gap_store.get_record(index=20)
-    assert got is not a
-    assert (got == a).all()
-
-
-def test_gapstore_add_invalid_duplicate():
-    a = numpy.array([[0, 24], [2, 3]], dtype=int)
-    gap_store = eti_align.GapStore(
-        source="stuff",
-        in_memory=True,
-        mode="w",
-        align_name="demo",
-    )
-    gap_store.add_record(index=20, gaps=a)
-    with pytest.raises(ValueError):
-        gap_store.add_record(index=20, gaps=a[:1])
-
-
 @pytest.fixture
 def db_align(DATA_DIR, tmp_dir):
     staging_path = tmp_dir / "staging"
@@ -596,3 +536,20 @@ def test_aligndb_close(db_align):
     db_align.close()
     with pytest.raises(duckdb.duckdb.ConnectionException):
         db_align.num_records()
+
+
+def test_load_align_records():
+    maf_record = {
+        "species": "chlorocebus_sabaeus",
+        "seqid": "28",
+        "start": 2617243,
+        "stop": 2645355,
+        "strand": "-",
+        "block_id": 20060000081647,
+        "source": "10_primates.epo.other_6.maf.gz",
+        # mixed case seq because this must be upper cased in seq2gap for cogent3
+        # to deem it a valid seq
+        "seq": "-acCAGGAAG",
+    }
+    got = eti_ingest_align.seq2gaps(maf_record)
+    assert (got.gap_spans == numpy.array([[0, 1]], dtype=numpy.int32)).all()
