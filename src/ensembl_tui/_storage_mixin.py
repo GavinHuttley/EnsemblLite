@@ -41,30 +41,6 @@ def _(data: numpy.ndarray) -> numpy.ndarray:
     return data
 
 
-def _make_table_sql(
-    table_name: str,
-    columns: dict,
-) -> str:
-    """makes the SQL for creating a table
-
-    Parameters
-    ----------
-    table_name : str
-        name of the table
-    columns : dict
-        {<column name>: <column SQL type>, ...}
-
-    Returns
-    -------
-    str
-    """
-    primary_key = columns.pop("PRIMARY KEY", None)
-    columns_types = ", ".join([f"{name} {ctype}" for name, ctype in columns.items()])
-    if primary_key:
-        columns_types = f"{columns_types}, PRIMARY KEY ({','.join(primary_key)})"
-    return f"CREATE TABLE IF NOT EXISTS {table_name} ({columns_types})"
-
-
 # HDF5 base class
 @dataclasses.dataclass
 class Hdf5Mixin(eti_util.SerialisableMixin):

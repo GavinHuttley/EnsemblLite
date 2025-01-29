@@ -18,7 +18,7 @@ _no_gaps = numpy.array([], dtype=numpy.int32)
 
 
 def seq2gaps(record: dict) -> eti_align.AlignRecord:
-    seq = make_seq(record.pop("seq"), new_type=True, moltype="dna")
+    seq = make_seq(record.pop("seq").upper(), new_type=True, moltype="dna")
     indel_map, _ = seq.parse_out_gaps()
     if indel_map.num_gaps:
         record["gap_spans"] = numpy.array(
@@ -62,7 +62,6 @@ def make_alignment_aggregator_db() -> duckdb.DuckDBPyConnection:
 def add_records(
     conn: duckdb.DuckDBPyConnection,
     records: typing.Sequence[eti_align.AlignRecord],
-    gap_store: eti_align.GapStore,
     progress: rich_progress.Progress | None = None,
 ) -> None:
     if not records:
@@ -78,7 +77,6 @@ def add_records(
     sql = (
         f"INSERT INTO align_blocks ({', '.join(col_order)}) VALUES ({val_placeholder})"
     )
-    rowid_sql = "SELECT currval('align_id_seq')"
     if progress is not None:
         msg = "Writings aligns ✍️"
         writing = progress.add_task(total=len(records), description=msg, advance=0)
@@ -87,9 +85,7 @@ def add_records(
         if record.block_id in used:
             continue
 
-        conn.sql(sql, params=[record[c] for c in col_order])
-        index = conn.sql(rowid_sql).fetchone()[0]
-        gap_store.add_record(index=index, gaps=record.gap_spans)
+        conn.sql(sql, params=record.to_record(col_order))
         if progress is not None:
             progress.update(writing, description=msg, advance=1)
 
@@ -116,15 +112,6 @@ def install_alignment(
         series=paths,
         max_workers=max_workers,
     )
-    gap_path = dest_dir / f"{dest_dir.stem}.{eti_align.GAP_STORE_SUFFIX}"
-
-    gap_store = eti_align.GapStore(
-        source=gap_path,
-        align_name=align_name,
-        mode="w",
-        in_memory=False,
-    )
-
     if progress is not None:
         msg = "Reading aligns 📖"
         reading = progress.add_task(total=len(paths), description=msg, advance=0)
@@ -142,9 +129,8 @@ def install_alignment(
     if progress is not None:
         progress.remove_task(reading)
 
-    add_records(conn=agg, records=records, gap_store=gap_store, progress=progress)
-    gap_store.close()
-    # write the parquet file, returns patrh to that file
+    add_records(conn=agg, records=records, progress=progress)
+    # write the parquet file, returns path to that file
     return eti_db_ingest.export_parquet(
         con=agg,
         table_name="align_blocks",

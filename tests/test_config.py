@@ -49,12 +49,6 @@ def installed_aligns(tmp_path):
     (align_dir / f"24_primates.epo_extended.{eti_align.ALIGN_STORE_SUFFIX}").open(
         mode="w",
     )
-    # and their associated HDF5 seqs
-    (align_dir / f"10_primates.epo.{eti_align.GAP_STORE_SUFFIX}").open(mode="w")
-    (align_dir / f"24_primates.epo_extended.{eti_align.GAP_STORE_SUFFIX}").open(
-        mode="w",
-    )
-
     return eti_config.InstalledConfig(release="11", install_path=tmp_path)
 
 

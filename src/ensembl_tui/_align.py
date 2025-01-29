@@ -1,11 +1,8 @@
-import pathlib
+import dataclasses
 import typing
-import uuid
 from collections import defaultdict
-from dataclasses import dataclass
 
 import cogent3
-import h5py
 import numpy
 import typing_extensions
 from cogent3.app.composable import define_app
@@ -20,7 +17,6 @@ DNA = cogent3.get_moltype("dna", new_type=True)
 
 _no_gaps = numpy.array([], dtype=_DEFAULT_GAP_DTYPE)
 
-GAP_STORE_SUFFIX = "indels-hdf5_blosc2"
 ALIGN_STORE_SUFFIX = "align_coords-sqlitedb"
 
 ALIGN_ATTR_SCHEMA = (
@@ -31,7 +27,8 @@ ALIGN_ATTR_SCHEMA = (
     "seqid TEXT",
     "start INTEGER",
     "stop INTEGER",
-    "strand TEXT",
+    "strand TINYINT",
+    "gap_spans BLOB",
 )
 ALIGN_ATTR_COLS = eti_util.make_column_constant(ALIGN_ATTR_SCHEMA)
 
@@ -44,7 +41,7 @@ VT = str | int | numpy.ndarray
 # parquet file with BLOB type.
 
 
-@dataclass(slots=True)
+@dataclasses.dataclass(slots=True)
 class AlignRecord:
     """a record from an AlignDb
 
@@ -60,8 +57,12 @@ class AlignRecord:
     seqid: str
     start: int
     stop: int
-    strand: str
+    strand: int
     gap_spans: numpy.ndarray
+
+    def __post_init__(self) -> None:
+        if isinstance(self.strand, str):
+            self.strand = -1 if self.strand.startswith("-") else 1
 
     def __getitem__(self, item: str) -> VT:
         return getattr(self, item)
@@ -97,113 +98,23 @@ class AlignRecord:
 
         return gap_pos, gap_lengths
 
+    def to_dict(self) -> dict:
+        return dataclasses.asdict(self)
+
+    def to_record(self, columns: tuple[str, ...]) -> tuple:
+        data = self.to_dict()
+        data["gap_spans"] = eti_storage.array_to_blob(self.gap_spans)
+        return tuple(data[c] for c in columns)
+
 
 ReturnType = tuple[str, tuple]  # the sql statement and corresponding values
 
 
-class GapStore(eti_storage.Hdf5Mixin):
-    """store gap data from aligned sequences"""
-
-    def __init__(
-        self,
-        source: eti_util.PathType,
-        align_name: str | None = None,
-        mode: str = "r",
-        in_memory: bool = False,
-    ) -> None:
-        """
-        Parameters
-        ----------
-        source
-            path to the file
-        align_name
-            the Ensembl alignment name, e.g. '10_primates.epo'
-        mode
-            file open mode
-        in_memory
-            an in-memory HDF5 file
-        """
-        in_memory = in_memory or "memory" in str(source)
-        # h5py requires a unique file path even for in-memory stores
-        source = uuid.uuid4().hex if in_memory else source
-
-        self.source = pathlib.Path(source)
-        self.mode = "w-" if mode == "w" else mode
-        h5_kwargs = (
-            {
-                "driver": "core",
-                "backing_store": False,
-            }
-            if in_memory
-            else {}
-        )
-        try:
-            self._file = h5py.File(source, mode=self.mode, **h5_kwargs)
-        except OSError as err:
-            msg = f"h5py could not open {source=}"
-            raise OSError(msg) from err
-
-        if "r" not in self.mode and "align_name" not in self._file.attrs:
-            if not align_name:
-                msg = "align_name not present in GapStore attrs"
-                raise ValueError(msg)
-            self._file.attrs["align_name"] = align_name
-        if (
-            align_name
-            and (file_species := self._file.attrs.get("align_name", None)) != align_name
-        ):
-            msg = f"{self.source.name!r} {file_species!r} != {align_name}"
-            raise ValueError(msg)
-        self.align_name = self._file.attrs["align_name"]
-
-    def add_record(self, *, index: int | str, gaps: numpy.ndarray) -> None:
-        # dataset names must be strings
-        index = str(index)
-        if index in self._file:
-            stored = self._file[index]
-            if (gaps == stored).all():
-                # already seen this index
-                return
-            # but it's different, which is a problem
-            msg = f"{index!r} already present but with different gaps"
-            raise ValueError(msg)
-        self._file.create_dataset(
-            name=index,
-            data=gaps,
-            chunks=True,
-            **eti_util.HDF5_BLOSC2_KWARGS,
-        )
-        self._file.flush()
-
-    def get_record(self, *, index: int | str) -> numpy.ndarray:
-        return self._file[str(index)][:]  # type: ignore
-
-
 # TODO add a table and methods to support storing the species tree used
 #  for the alignment and for getting the species tree
-@dataclass(slots=True)
+@dataclasses.dataclass(slots=True)
 class AlignDb(eti_storage.DuckdbParquetBase):
     _tables: tuple[str, ...] = ("align_blocks",)
-    gap_store: GapStore | None = None
-
-    def _post_init(self) -> None:
-        source = self.source
-        if source.name == ":memory:":
-            gap_path = "memory"
-            kwargs = {"in_memory": True}
-        else:
-            gap_path = source / f"{source.stem}.{GAP_STORE_SUFFIX}"
-            kwargs = {"in_memory": False}
-
-        if self.gap_store is not None:
-            return
-
-        self.gap_store = GapStore(
-            source=gap_path,
-            align_name=source.stem,
-            mode="r",
-            **kwargs,
-        )
 
     def _get_block_id(
         self,
@@ -261,14 +172,14 @@ class AlignDb(eti_storage.DuckdbParquetBase):
         }
         if not block_ids:
             return []
-        col_order = ", ".join(ALIGN_ATTR_COLS)
+        columns = tuple(c for c in ALIGN_ATTR_COLS if c != "align_id")
+        col_order = ", ".join(columns)
         values = ", ".join("?" * len(block_ids))
         sql = f"SELECT {col_order} from {self._tables[0]} WHERE block_id IN ({values})"
         results = defaultdict(set)
         for record in self.conn.sql(sql, params=tuple(block_ids)).fetchall():
-            data = dict(zip(ALIGN_ATTR_COLS, record, strict=True))
-            index = data.pop("align_id")
-            data["gap_spans"] = self.gap_store.get_record(index=index)
+            data = dict(zip(columns, record, strict=True))
+            data["gap_spans"] = eti_storage.blob_to_array(data["gap_spans"])
             results[data["block_id"]].add(AlignRecord(**data))
 
         return results.values()
@@ -290,8 +201,6 @@ class AlignDb(eti_storage.DuckdbParquetBase):
 
     def close(self) -> None:
         """closes duckdb and h5py storage"""
-        if self.gap_store:
-            self.gap_store.close()
         self.conn.close()
 
 
@@ -348,7 +257,7 @@ def get_alignment(
                 seq_start = max(ref_start or genome_start, genome_start)
                 seq_end = min(ref_end or genome_end, genome_end)
                 # make these coordinates relative to the aligned segment
-                if align_record.strand == "-":
+                if align_record.strand == -1:
                     # if record is on minus strand, then genome stop is
                     # the alignment start
                     seq_start, seq_end = genome_end - seq_end, genome_end - seq_start
@@ -384,7 +293,7 @@ def get_alignment(
             seq_start = imap.get_seq_index(align_start)
             seq_end = imap.get_seq_index(align_end)
             seq_length = seq_end - seq_start
-            if align_record.strand == "-":
+            if align_record.strand == -1:
                 # if it's neg strand, the alignment start is the genome stop
                 seq_start = imap.parent_length - seq_end
 
@@ -398,12 +307,11 @@ def get_alignment(
             # we now trim the gaps for this sequence to the sub-alignment
             imap = imap[align_start:align_end]
 
-            if align_record.strand == "-":
+            if align_record.strand == -1:
                 s = s.rc()
 
             if not namer:
-                strand_symbol = -1 if align_record.strand == "-" else 1
-                s.name = f"{s.name}:{strand_symbol}"
+                s.name = f"{s.name}:{align_record.strand}"
 
             if s.name in seqs:
                 print(f"duplicated {s.name}")
