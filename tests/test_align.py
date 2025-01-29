@@ -114,7 +114,7 @@ def make_records(start, end, block_id):
             seqid=seqid,
             start=seq_start,
             stop=seq_end,
-            strand="-" if seq_strand == -1 else "+",
+            strand=seq_strand,
             gap_spans=gap_spans,
         )
         records.append(record)
@@ -263,7 +263,7 @@ def _update_records(s2_genome, aln, block_id, start, end):
         if record.seqid == "s2":
             record.start = start
             record.stop = end
-            record.strand = "-"
+            record.strand = -1
             break
     return align_records
 

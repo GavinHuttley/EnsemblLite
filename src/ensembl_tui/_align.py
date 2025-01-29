@@ -27,7 +27,7 @@ ALIGN_ATTR_SCHEMA = (
     "seqid TEXT",
     "start INTEGER",
     "stop INTEGER",
-    "strand TEXT",
+    "strand TINYINT",
     "gap_spans BLOB",
 )
 ALIGN_ATTR_COLS = eti_util.make_column_constant(ALIGN_ATTR_SCHEMA)
@@ -57,8 +57,12 @@ class AlignRecord:
     seqid: str
     start: int
     stop: int
-    strand: str
+    strand: int
     gap_spans: numpy.ndarray
+
+    def __post_init__(self) -> None:
+        if isinstance(self.strand, str):
+            self.strand = -1 if self.strand.startswith("-") else 1
 
     def __getitem__(self, item: str) -> VT:
         return getattr(self, item)
@@ -253,7 +257,7 @@ def get_alignment(
                 seq_start = max(ref_start or genome_start, genome_start)
                 seq_end = min(ref_end or genome_end, genome_end)
                 # make these coordinates relative to the aligned segment
-                if align_record.strand == "-":
+                if align_record.strand == -1:
                     # if record is on minus strand, then genome stop is
                     # the alignment start
                     seq_start, seq_end = genome_end - seq_end, genome_end - seq_start
@@ -289,7 +293,7 @@ def get_alignment(
             seq_start = imap.get_seq_index(align_start)
             seq_end = imap.get_seq_index(align_end)
             seq_length = seq_end - seq_start
-            if align_record.strand == "-":
+            if align_record.strand == -1:
                 # if it's neg strand, the alignment start is the genome stop
                 seq_start = imap.parent_length - seq_end
 
@@ -303,12 +307,11 @@ def get_alignment(
             # we now trim the gaps for this sequence to the sub-alignment
             imap = imap[align_start:align_end]
 
-            if align_record.strand == "-":
+            if align_record.strand == -1:
                 s = s.rc()
 
             if not namer:
-                strand_symbol = -1 if align_record.strand == "-" else 1
-                s.name = f"{s.name}:{strand_symbol}"
+                s.name = f"{s.name}:{align_record.strand}"
 
             if s.name in seqs:
                 print(f"duplicated {s.name}")

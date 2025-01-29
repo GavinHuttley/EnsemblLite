@@ -26,7 +26,7 @@ EXON_VIEW_SCHEMA = (
     "seqid TEXT",
     "start INTEGER",
     "stop INTEGER",
-    "strand INTEGER",
+    "strand TINYINT",
     "rank INTEGER",
     "gene_id INTEGER",
     "transcript_stable_id TEXT",
