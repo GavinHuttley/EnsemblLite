@@ -294,7 +294,8 @@ class GeneView(eti_storage.DuckdbParquetBase, eti_storage.ViewMixin):
         if kwargs := {
             k: v
             for k, v in local_vars.items()
-            if k not in ("self", "kwargs", "columns", "limit") and v is not None
+            if k not in ("self", "kwargs", "columns", "limit", "local_vars")
+            and v is not None
         }:
             like_conds = (
                 {"description": kwargs.pop("description")} if description else None
@@ -592,7 +593,7 @@ class RepeatView(eti_storage.DuckdbParquetBase, eti_storage.ViewMixin):
         if kwargs := {
             k: v
             for k, v in local_vars.items()
-            if k not in ("self", "kwargs", "limit") and v is not None
+            if k not in ("self", "kwargs", "limit", "local_vars") and v is not None
         }:
             like_cols = "repeat_type", "repeat_class", "repeat_name"
             like_conds = {k: v for k, v in kwargs.items() if k in like_cols}
