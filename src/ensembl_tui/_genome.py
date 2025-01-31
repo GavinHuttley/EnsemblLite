@@ -424,11 +424,22 @@ class Genome:
 
     def get_ids_for_biotype(
         self,
+        *,
         biotype: str,
+        seqid: str | list[str] | None = None,
         limit: OptionalInt = None,
     ) -> typing.Iterable[str]:
         genes = self.annotation_db.genes
-        return genes.get_ids_for_biotype(biotype=biotype, limit=limit)
+        if genes is None:
+            msg = f"no gene data for {self.species}"
+            raise ValueError(msg)
+        seqids = [seqid] if isinstance(seqid, str | type(None)) else seqid
+        for seqid in seqids:
+            yield from genes.get_ids_for_biotype(
+                biotype=biotype,
+                seqid=seqid,
+                limit=limit,
+            )
 
     def close(self) -> None:
         self._seqs.close()
