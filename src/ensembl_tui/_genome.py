@@ -374,7 +374,7 @@ class Genome:
         for ft in self.annotation_db.get_features_matching(
             biotype=biotype,
             seqid=seqid,
-            name=name,
+            stable_id=name,
             start=start,
             stop=stop,
             limit=limit,

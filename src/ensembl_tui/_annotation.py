@@ -289,6 +289,7 @@ class GeneView(eti_storage.DuckdbParquetBase, eti_storage.ViewMixin):
         **kwargs,  # noqa: ANN003
     ) -> typing.Iterator[FeatureDataBase]:
         # add supoport for querying by symbol and description
+        stable_id = stable_id or kwargs.pop("name", None)
         limit = kwargs.pop("limit", None)
         local_vars = locals()
         if kwargs := {
