@@ -15,6 +15,18 @@ from ensembl_tui import _species as eti_species
 from ensembl_tui import _util as eti_util
 
 
+def _get_coord_names(ctx, param, coord_names) -> list[str] | None:
+    """returns a list of chrom/coord names"""
+    if coord_names is None:
+        return None
+
+    path = pathlib.Path(coord_names)
+    if path.is_file():
+        return [l.strip() for l in path.read_text().splitlines()]
+
+    return [f.strip() for f in coord_names.split(",")]
+
+
 def _get_installed_config_path(ctx, param, path) -> eti_util.PathType:
     """path to installed.cfg"""
     path = pathlib.Path(path)
@@ -153,6 +165,12 @@ _mask_features = click.option(
     "--mask_features",
     callback=_values_from_csv,
     help="Biotypes to mask (comma separated).",
+)
+_coord_names = click.option(
+    "--coord_names",
+    default=None,
+    callback=_get_coord_names,
+    help="Comma separated list of ref species chrom/coord names or a path leading to names, one per line.",
 )
 
 
@@ -503,6 +521,7 @@ def alignments(
     help="type of homology",
 )
 @_ref
+@_coord_names
 @_nprocs
 @_limit
 @_force
@@ -512,6 +531,7 @@ def homologs(
     outdir,
     relationship,
     ref,
+    coord_names,
     num_procs,
     limit,
     force_overwrite,
@@ -547,7 +567,14 @@ def homologs(
     if verbose:
         eti_util.print_colour(text=f"Loaded genome for {ref!r}", colour="yellow")
 
-    gene_ids = list(genome.get_ids_for_biotype(biotype="protein_coding"))
+    # we don't use the limit argument for this query since we want the limit
+    # to be the number of homology matches
+    gene_ids = list(
+        genome.get_ids_for_biotype(
+            biotype="protein_coding",
+            seqid=coord_names,
+        ),
+    )
 
     if verbose:
         eti_util.print_colour(

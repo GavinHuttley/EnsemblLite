@@ -111,8 +111,8 @@ def test_dump_genes(installed):
 
 
 @pytest.mark.slow
-def test_homologs(installed):
-    outdir = installed.parent / "output"
+def test_homologs(installed, tmp_dir):
+    outdir = tmp_dir / "output"
     limit = 10
     args = [
         f"-i{installed}",
@@ -122,6 +122,35 @@ def test_homologs(installed):
         f"{outdir}",
         "--limit",
         str(limit),
+        "-r",
+        "ortholog_one2one",
+        "-v",
+    ]
+
+    r = RUNNER.invoke(
+        eti_cli.homologs,
+        args,
+        catch_exceptions=False,
+    )
+    assert r.exit_code == 0, r.output
+    dstore = cogent3.open_data_store(outdir, suffix="fa", mode="r")
+    assert len(dstore.completed) == limit
+
+
+@pytest.mark.slow
+def test_homologs_coord_name(installed, tmp_dir):
+    outdir = tmp_dir / "output"
+    limit = 10
+    args = [
+        f"-i{installed}",
+        "--ref",
+        "saccharomyces_cerevisiae",
+        "--outdir",
+        f"{outdir}",
+        "--limit",
+        str(limit),
+        "--coord_names",
+        "I,XVI,II",
         "-r",
         "ortholog_one2one",
         "-v",

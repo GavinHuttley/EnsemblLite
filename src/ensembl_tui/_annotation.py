@@ -289,12 +289,14 @@ class GeneView(eti_storage.DuckdbParquetBase, eti_storage.ViewMixin):
         **kwargs,  # noqa: ANN003
     ) -> typing.Iterator[FeatureDataBase]:
         # add supoport for querying by symbol and description
+        stable_id = stable_id or kwargs.pop("name", None)
         limit = kwargs.pop("limit", None)
         local_vars = locals()
         if kwargs := {
             k: v
             for k, v in local_vars.items()
-            if k not in ("self", "kwargs", "columns", "limit") and v is not None
+            if k not in ("self", "kwargs", "columns", "limit", "local_vars")
+            and v is not None
         }:
             like_conds = (
                 {"description": kwargs.pop("description")} if description else None
@@ -592,7 +594,7 @@ class RepeatView(eti_storage.DuckdbParquetBase, eti_storage.ViewMixin):
         if kwargs := {
             k: v
             for k, v in local_vars.items()
-            if k not in ("self", "kwargs", "limit") and v is not None
+            if k not in ("self", "kwargs", "limit", "local_vars") and v is not None
         }:
             like_cols = "repeat_type", "repeat_class", "repeat_name"
             like_conds = {k: v for k, v in kwargs.items() if k in like_cols}
