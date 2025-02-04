@@ -1,7 +1,7 @@
 import pathlib
 import typing
 from collections.abc import Callable
-from ftplib import FTP
+from ftplib import FTP, error_perm
 
 from rich.progress import Progress, track
 from unsync import unsync
@@ -23,10 +23,25 @@ def listdir(
     """returns directory listing"""
     pattern = pattern or (lambda x: True)
     ftp = configured_ftp(host=host)
-    ftp.cwd(path)
+    try:
+        ftp.cwd(path)
+    except error_perm:
+        msg = "\n".join(
+            [
+                "",
+                f"Skipping {path}",
+                "Could not change into directory on FTP site.",
+                "This can be because of Ensembl naming inconsistencies.",
+                "Check names are consistent between genomes and homology.",
+            ],
+        )
+        eti_util.print_colour(msg, "red")
+        return
+
     for fn in ftp.nlst():
         if pattern(fn):
             yield f"{path}/{fn}"
+
     ftp.close()
 
 
