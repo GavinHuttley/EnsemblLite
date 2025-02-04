@@ -82,7 +82,7 @@ def migrate_schema(con: duckdb.DuckDBPyConnection, table_name: str) -> None:
         strict=False,
     )
     for n, t in names_types:
-        if n.endswith("strand") and t == "BOOL":
+        if n.endswith("strand"):
             # assume any column name ending with "strand" is a
             # smallint (-1, 0, 1) for minus, unknown, plus strand
             sql = f"ALTER TABLE {table_name} ALTER COLUMN {n} SET DATA TYPE TINYINT;"
