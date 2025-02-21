@@ -571,3 +571,10 @@ def tempdir(working_dir: pathlib.Path | str | None = None) -> pathlib.Path:
 
 def make_column_constant(schema: tuple[str, ...]) -> tuple[str, ...]:
     return tuple(c.split()[0] for c in schema)
+
+
+_has_wildcard = re.compile(r"[*?\[\]]")
+
+
+def contains_glob_pattern(s: str) -> bool:
+    return _has_wildcard.search(s) is not None

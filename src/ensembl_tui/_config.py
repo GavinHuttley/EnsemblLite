@@ -200,11 +200,16 @@ class InstalledConfig:
         pattern
             glob pattern for the Ensembl alignment name
         """
-        align_dirs = [
-            d
-            for d in self.aligns_path.glob("*")
-            if fnmatch.fnmatch(d.stem, pattern) and d.name.endswith(suffix)
-        ]
+        if eti_util.contains_glob_pattern(pattern):
+            align_dirs = [
+                d
+                for d in self.aligns_path.glob("*")
+                if fnmatch.fnmatch(d.name, pattern)
+            ]
+        elif pattern:
+            align_dirs = [d for d in self.aligns_path.glob("*") if pattern in d.name]
+        else:
+            align_dirs = None
         if not align_dirs:
             return None
 
@@ -214,7 +219,11 @@ class InstalledConfig:
                 msg,
             )
 
-        return align_dirs[0]
+        align_dir = align_dirs[0]
+        if not list(align_dir.glob(f"*{suffix}")):
+            msg = f"{align_dir} does not contain file with suffix {suffix}"
+            raise FileNotFoundError(msg)
+        return align_dir
 
 
 def write_installed_cfg(config: Config) -> eti_util.PathType:

@@ -17,7 +17,7 @@ DNA = cogent3.get_moltype("dna", new_type=True)
 
 _no_gaps = numpy.array([], dtype=_DEFAULT_GAP_DTYPE)
 
-ALIGN_STORE_SUFFIX = "align_coords-sqlitedb"
+ALIGN_STORE_SUFFIX = "parquet"
 
 ALIGN_ATTR_SCHEMA = (
     "align_id INTEGER PRIMARY KEY DEFAULT nextval('align_id_seq')",

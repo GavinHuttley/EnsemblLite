@@ -387,6 +387,7 @@ def species_summary(installed, species):
 @_outdir
 @_align_name
 @_ref
+@_coord_names
 @_ref_genes_file
 @_mask_features
 @_limit
@@ -397,6 +398,7 @@ def alignments(
     outdir,
     align_name,
     ref,
+    coord_names,
     ref_genes_file,
     mask_features,
     limit,
@@ -430,6 +432,14 @@ def alignments(
             text=f"{align_name!r} does not match any alignments under {str(config.aligns_path)!r}",
             colour="red",
         )
+        available = "\n".join(
+            [
+                fn.stem
+                for fn in config.aligns_path.glob("*")
+                if not fn.name.startswith(".") and fn.is_dir()
+            ],
+        )
+        eti_util.print_colour(text=f"Available alignments:\n{available}", colour="red")
         sys.exit(1)
 
     align_db = eti_align.AlignDb(source=align_path)
@@ -463,6 +473,14 @@ def alignments(
             )
             sys.exit(1)
         stableids = table.columns["stableid"]
+    elif coord_names:
+        genome = genomes[ref_species]
+        stableids = list(
+            genome.get_ids_for_biotype(
+                biotype="protein_coding",
+                seqid=coord_names,
+            ),
+        )
     else:
         stableids = None
 
