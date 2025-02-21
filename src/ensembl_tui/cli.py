@@ -479,6 +479,7 @@ def alignments(
             genome.get_ids_for_biotype(
                 biotype="protein_coding",
                 seqid=coord_names,
+                limit=limit,
             ),
         )
     else:
