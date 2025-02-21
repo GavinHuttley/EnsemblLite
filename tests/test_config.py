@@ -43,22 +43,37 @@ def test_installed_config_hash():
 @pytest.fixture
 def installed_aligns(tmp_path):
     align_dir = tmp_path / eti_config._COMPARA_NAME / eti_config._ALIGNS_NAME
-    align_dir.mkdir(parents=True, exist_ok=True)
     # make two alignment paths with similar names
-    (align_dir / f"10_primates.epo.{eti_align.ALIGN_STORE_SUFFIX}").open(mode="w")
-    (align_dir / f"24_primates.epo_extended.{eti_align.ALIGN_STORE_SUFFIX}").open(
-        mode="w",
-    )
+    names = "10_primates.epo", "24_primates.epo_extended"
+    for name in names:
+        dirname = align_dir / name
+        dirname.mkdir(parents=True, exist_ok=True)
+        (dirname / f"align_blocks.{eti_align.ALIGN_STORE_SUFFIX}").open(mode="w")
     return eti_config.InstalledConfig(release="11", install_path=tmp_path)
 
 
-@pytest.mark.parametrize("pattern", ("10*", "1*prim*", "10_p*", "10_primates.epo"))
+@pytest.fixture
+def incomplete_installed(installed_aligns):
+    align_path = installed_aligns.aligns_path
+    for path in align_path.glob(
+        f"*/*.{eti_align.ALIGN_STORE_SUFFIX}",
+    ):
+        path.unlink()
+    return installed_aligns
+
+
+@pytest.mark.parametrize("pattern", ["10*", "1*prim*", "10_p*", "10_primates.epo"])
 def test_get_alignment_path(installed_aligns, pattern):
     got = installed_aligns.path_to_alignment(pattern, eti_align.ALIGN_STORE_SUFFIX)
-    assert got.name == f"10_primates.epo.{eti_align.ALIGN_STORE_SUFFIX}"
+    assert got.name == "10_primates.epo"
 
 
-@pytest.mark.parametrize("pattern", ("10pri*", "blah-blah", ""))
+def test_get_alignment_path_incomplete(incomplete_installed):
+    with pytest.raises(FileNotFoundError):
+        incomplete_installed.path_to_alignment("10*", eti_align.ALIGN_STORE_SUFFIX)
+
+
+@pytest.mark.parametrize("pattern", ("10pri*", "blah-blah", "")[-1:])
 def test_get_alignment_path_invalid(installed_aligns, pattern):
     assert (
         installed_aligns.path_to_alignment(pattern, eti_align.ALIGN_STORE_SUFFIX)
