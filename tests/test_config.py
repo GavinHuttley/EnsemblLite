@@ -73,7 +73,7 @@ def test_get_alignment_path_incomplete(incomplete_installed):
         incomplete_installed.path_to_alignment("10*", eti_align.ALIGN_STORE_SUFFIX)
 
 
-@pytest.mark.parametrize("pattern", ("10pri*", "blah-blah", "")[-1:])
+@pytest.mark.parametrize("pattern", ["10pri*", "blah-blah", ""])
 def test_get_alignment_path_invalid(installed_aligns, pattern):
     assert (
         installed_aligns.path_to_alignment(pattern, eti_align.ALIGN_STORE_SUFFIX)
@@ -81,7 +81,7 @@ def test_get_alignment_path_invalid(installed_aligns, pattern):
     )
 
 
-@pytest.mark.parametrize("pattern", ("*pri*", "*epo*"))
+@pytest.mark.parametrize("pattern", ["*pri*", "*epo*"])
 def test_get_alignment_path_multiple(installed_aligns, pattern):
     with pytest.raises(ValueError):
         installed_aligns.path_to_alignment(pattern, eti_align.ALIGN_STORE_SUFFIX)
