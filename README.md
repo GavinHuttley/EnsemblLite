@@ -105,7 +105,9 @@ Some commands can be run in parallel but have moderate memory requirements. If y
 
   Options:
     -c, --configpath PATH  Path to config file specifying databases, (only species
-                           or compara at present).
+                           or compara at present).  [default:
+                           /Users/gavin/miniconda3/envs/eti/lib/python3.12/site-
+                           packages/ensembl_tui/data/sample.cfg]
     -d, --debug            Maximum verbosity, and reduces number of downloads,
                            etc...
     -v, --verbose
@@ -227,6 +229,7 @@ We provide a conventional command line interface for querying the data with subc
 
   Commands:
     alignments       export multiple alignments in fasta format for named genes
+    compara-summary  summary data for compara
     download         download data from Ensembl's ftp site
     dump-genes       export meta-data table for genes from one species to...
     exportrc         exports sample config and species table to the nominated...
