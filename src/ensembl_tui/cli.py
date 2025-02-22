@@ -11,6 +11,7 @@ from ensembl_tui import __version__
 from ensembl_tui import _config as eti_config
 from ensembl_tui import _download as eti_download
 from ensembl_tui import _genome as eti_genome
+from ensembl_tui import _homology as eti_homology
 from ensembl_tui import _species as eti_species
 from ensembl_tui import _util as eti_util
 
@@ -340,8 +341,11 @@ def installed(installed: pathlib.Path) -> None:
             data["species"].append(name)
             data["common name"].append(cn)
 
-        table = make_table(data=data, title="Installed genomes")
+        table = make_table(data=data, title="Installed genomes:")
         eti_util.rich_display(table)
+
+    if config.homologies_path.exists():
+        eti_util.print_colour("Installed homologies: ✅", colour="blue", style="bold")
 
     # TODO as above
     compara_aligns = config.aligns_path
@@ -349,9 +353,13 @@ def installed(installed: pathlib.Path) -> None:
         align_names = {
             fn.stem for fn in compara_aligns.glob("*") if not fn.name.startswith(".")
         }
+        eti_util.print_colour(
+            "Installed whole genome alignments:",
+            colour="blue",
+            style="bold",
+        )
         table = make_table(
             data={"align name": list(align_names)},
-            title="Installed whole genome alignments",
         )
         eti_util.rich_display(table)
 
@@ -560,8 +568,6 @@ def homologs(
 ) -> None:
     """exports CDS sequence data in fasta format for homology type relationship"""
     from rich import progress
-
-    from ensembl_tui import _homology as eti_homology
 
     LOGGER = CachingLogger()
     LOGGER.log_args()
