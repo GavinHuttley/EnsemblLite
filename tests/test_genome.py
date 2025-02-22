@@ -44,6 +44,17 @@ def test_get_species_gene_summary(yeast_db):
     # we do not check values here, only the Type and that we have > 0 records
     assert isinstance(got, Table)
     assert len(got) > 0
+    assert "biotype" in got.header
+
+
+def test_get_species_repeat_summary(yeast_db):
+    from cogent3.util.table import Table
+
+    got = eti_genome.get_species_repeat_summary(annot_db=yeast_db)
+    # we do not check values here, only the Type and that we have > 0 records
+    assert isinstance(got, Table)
+    assert len(got) > 0
+    assert "repeat_type" in got.header
 
 
 def test_genome_coord_names(yeast_db):

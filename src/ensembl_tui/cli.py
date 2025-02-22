@@ -378,7 +378,9 @@ def species_summary(installed: pathlib.Path, species: str) -> None:
     annot_db = eti_genome.load_annotations_for_species(
         path=config.installed_genome(species=species),
     )
-    summary = eti_genome.get_species_summary(annot_db=annot_db, species=species)
+    summary = eti_genome.get_species_gene_summary(annot_db=annot_db, species=species)
+    eti_util.rich_display(summary)
+    summary = eti_genome.get_species_repeat_summary(annot_db=annot_db, species=species)
     eti_util.rich_display(summary)
 
 
