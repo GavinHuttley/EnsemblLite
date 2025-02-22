@@ -27,7 +27,7 @@ def _get_coord_names(ctx, param, coord_names) -> list[str] | None:
     return [f.strip() for f in coord_names.split(",")]
 
 
-def _get_installed_config_path(ctx, param, path) -> eti_util.PathType:
+def _get_installed_config_path(ctx, param, path) -> pathlib.Path:
     """path to installed.cfg"""
     path = pathlib.Path(path)
     if path.name == eti_config.INSTALLED_CONFIG_NAME:
@@ -183,7 +183,7 @@ def main():
 
 @main.command(**_click_command_opts)
 @_dbrc_out
-def exportrc(outpath):
+def exportrc(outpath: pathlib.Path) -> None:
     """exports sample config and species table to the nominated path"""
 
     outpath = outpath.expanduser()
@@ -204,7 +204,7 @@ def exportrc(outpath):
 @_cfgpath
 @_debug
 @_verbose
-def download(configpath, debug, verbose):
+def download(configpath: pathlib.Path, debug: bool, verbose: bool) -> None:
     """download data from Ensembl's ftp site"""
     from rich import progress
 
@@ -323,7 +323,7 @@ def install(
 
 @main.command(**_click_command_opts)
 @_installed
-def installed(installed):
+def installed(installed: pathlib.Path) -> None:
     """show what is installed"""
     from cogent3 import make_table
 
@@ -359,7 +359,7 @@ def installed(installed):
 @main.command(**_click_command_opts)
 @_installed
 @_species
-def species_summary(installed, species):
+def species_summary(installed: pathlib.Path, species: str) -> None:
     """genome summary data for a species"""
 
     config = eti_config.read_installed_cfg(installed)
@@ -394,17 +394,17 @@ def species_summary(installed, species):
 @_force
 @_verbose
 def alignments(
-    installed,
-    outdir,
-    align_name,
-    ref,
-    coord_names,
-    ref_genes_file,
-    mask_features,
-    limit,
-    force_overwrite,
-    verbose,
-):
+    installed: pathlib.Path,
+    outdir: pathlib.Path,
+    align_name: str,
+    ref: str,
+    coord_names: str,
+    ref_genes_file: pathlib.Path,
+    mask_features: pathlib.Path,
+    limit: int,
+    force_overwrite: bool,
+    verbose: bool,
+) -> None:
     """export multiple alignments in fasta format for named genes"""
     from cogent3 import load_table
     from rich import progress
@@ -546,16 +546,16 @@ def alignments(
 @_force
 @_verbose
 def homologs(
-    installed,
-    outdir,
-    relationship,
-    ref,
-    coord_names,
-    num_procs,
-    limit,
-    force_overwrite,
-    verbose,
-):
+    installed: pathlib.Path,
+    outdir: pathlib.Path,
+    relationship: str,
+    ref: str,
+    coord_names: str,
+    num_procs: int,
+    limit: int,
+    force_overwrite: bool,
+    verbose: bool,
+) -> None:
     """exports CDS sequence data in fasta format for homology type relationship"""
     from rich import progress
 
@@ -671,7 +671,12 @@ def homologs(
 @_species
 @_outdir
 @_limit
-def dump_genes(installed, species, outdir, limit):
+def dump_genes(
+    installed: pathlib.Path,
+    species: str,
+    outdir: pathlib.Path,
+    limit: int,
+) -> None:
     """export meta-data table for genes from one species to <species>-<release>.gene_metadata.tsv"""
 
     config = eti_config.read_installed_cfg(installed)
