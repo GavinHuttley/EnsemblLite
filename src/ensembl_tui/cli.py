@@ -394,6 +394,22 @@ def species_summary(installed: pathlib.Path, species: str) -> None:
 
 @main.command(**_click_command_opts)
 @_installed
+def compara_summary(installed: pathlib.Path) -> None:
+    """summary data for compara"""
+
+    config = eti_config.read_installed_cfg(installed)
+    if config.homologies_path.exists():
+        db = eti_homology.load_homology_db(
+            path=config.homologies_path,
+        )
+        table = db.count_distinct(homology_type=True)
+        table.title = "Homology types"
+        table.format_column("count", lambda x: f"{x:,}")
+        eti_util.rich_display(table)
+
+
+@main.command(**_click_command_opts)
+@_installed
 @_outdir
 @_align_name
 @_ref
