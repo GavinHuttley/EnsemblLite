@@ -73,7 +73,6 @@ _click_command_opts = {
 _cfgpath = click.option(
     "-c",
     "--configpath",
-    default=eti_download.DEFAULT_CFG,
     type=pathlib.Path,
     help="Path to config file specifying databases, (only "
     "species or compara at present).",
@@ -209,12 +208,14 @@ def download(configpath: pathlib.Path, debug: bool, verbose: bool) -> None:
     """download data from Ensembl's ftp site"""
     from rich import progress
 
-    if configpath.name == eti_download.DEFAULT_CFG:
-        # TODO is this statement correct if we're seting a root dir now?
+    if not configpath:
         eti_util.print_colour(
-            text="WARN: using the built in demo cfg, will write to /tmp",
-            colour="yellow",
+            text="No config specified, exiting.",
+            colour="red",
+            style="bold",
         )
+        sys.exit(1)
+
     config = eti_config.read_config(configpath, root_dir=pathlib.Path.cwd())
 
     if verbose:

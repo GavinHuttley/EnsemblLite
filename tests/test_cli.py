@@ -34,6 +34,12 @@ def test_download(tmp_config):
     assert r.exit_code == 0, r.output
 
 
+def test_download_no_config():
+    r = RUNNER.invoke(eti_cli.download, ["-d"], catch_exceptions=False)
+    assert r.exit_code != 0, r.output
+    assert "No config" in r.output
+
+
 def test_exportrc(tmp_dir):
     """exportrc works correctly"""
     outdir = tmp_dir / "exported"

@@ -105,9 +105,7 @@ Some commands can be run in parallel but have moderate memory requirements. If y
 
   Options:
     -c, --configpath PATH  Path to config file specifying databases, (only species
-                           or compara at present).  [default:
-                           /Users/gavin/miniconda3/envs/eti/lib/python3.12/site-
-                           packages/ensembl_tui/data/sample.cfg]
+                           or compara at present).
     -d, --debug            Maximum verbosity, and reduces number of downloads,
                            etc...
     -v, --verbose
