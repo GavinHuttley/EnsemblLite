@@ -253,7 +253,6 @@ class BiotypeView(eti_storage.DuckdbParquetBase, eti_storage.ViewMixin):
         sql = f"SELECT DISTINCT biotype FROM {self._tables[0]}"
         return tuple(r[0] for r in self.conn.sql(sql).fetchall())
 
-    @functools.cached_property
     def count_distinct(self) -> "Table":
         sql = (
             f"SELECT biotype, COUNT(*) AS freq FROM {self._tables[0]} GROUP BY biotype"

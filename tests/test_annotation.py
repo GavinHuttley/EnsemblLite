@@ -43,7 +43,7 @@ def test_biotype_view(worm_biotypes):
     distinct = bt.distinct
     assert "protein_coding" in distinct
     assert "miRNA" in distinct
-    counts = bt.count_distinct
+    counts = bt.count_distinct()
     assert counts["protein_coding", "count"] > 10_000
 
 

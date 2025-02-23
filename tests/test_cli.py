@@ -34,6 +34,12 @@ def test_download(tmp_config):
     assert r.exit_code == 0, r.output
 
 
+def test_download_no_config():
+    r = RUNNER.invoke(eti_cli.download, ["-d"], catch_exceptions=False)
+    assert r.exit_code != 0, r.output
+    assert "No config" in r.output
+
+
 def test_exportrc(tmp_dir):
     """exportrc works correctly"""
     outdir = tmp_dir / "exported"
@@ -164,3 +170,15 @@ def test_homologs_coord_name(installed, tmp_dir):
     assert r.exit_code == 0, r.output
     dstore = cogent3.open_data_store(outdir, suffix="fa", mode="r")
     assert len(dstore.completed) == limit
+
+
+@pytest.mark.slow
+def test_compara_summary(installed):
+    r = RUNNER.invoke(
+        eti_cli.compara_summary,
+        [f"-i{installed}"],
+        catch_exceptions=False,
+    )
+    assert r.exit_code == 0, r.output
+    assert "homology_type" in r.output
+    assert "ortholog_one2many" in r.output

@@ -14,6 +14,9 @@ from ensembl_tui import _genome as eti_genome
 from ensembl_tui import _storage_mixin as eti_storage
 from ensembl_tui import _util as eti_util
 
+if typing.TYPE_CHECKING:
+    from cogent3.util.table import Table
+
 HOMOLOGY_ATTR_SCHEMA = (
     "rowid INTEGER PRIMARY KEY DEFAULT nextval('rowid_seq')",
     "homology_id INTEGER",
@@ -150,7 +153,11 @@ class HomologyDb(eti_storage.DuckdbParquetBase):
         sql = "SELECT COUNT(DISTINCT homology_id) FROM homology_groups_attr"
         return self.conn.sql(sql).fetchone()[0]
 
-    def count_distinct(self, species: bool = False, homology_type: bool = False) -> int:
+    def count_distinct(
+        self,
+        species: bool = False,
+        homology_type: bool = False,
+    ) -> "Table":
         columns = []
         if species:
             columns.append("species_db")

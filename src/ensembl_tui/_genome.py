@@ -601,7 +601,7 @@ def get_gene_table_for_species(
     return table
 
 
-def get_species_summary(
+def get_species_gene_summary(
     *,
     annot_db: eti_annots.Annotations,
     species: str | None = None,
@@ -618,12 +618,41 @@ def get_species_summary(
     """
     # for now, just biotype
     species = species or annot_db.source.parent.name
-    counts = annot_db.biotypes.count_distinct
+    counts = annot_db.biotypes.count_distinct()
     try:
         common_name = eti_species.Species.get_common_name(species)
     except ValueError:
         common_name = species
 
     counts.title = f"{common_name} features"
+    counts.format_column("count", lambda x: f"{x:,}")
+    return counts
+
+
+def get_species_repeat_summary(
+    *,
+    annot_db: eti_annots.Annotations,
+    species: str | None = None,
+) -> Table:
+    """
+    returns the Table summarising repeat data for species_name
+
+    Parameters
+    ----------
+    annot_db
+        feature db
+    species
+        species name, overrides inference from annot_db.source
+    """
+    # for now, just biotype
+    species = species or annot_db.source.parent.name
+    counts = annot_db.repeats.count_distinct(repeat_class=True, repeat_type=True)
+    try:
+        common_name = eti_species.Species.get_common_name(species)
+    except ValueError:
+        common_name = species
+
+    counts = counts.sorted(columns=["repeat_type", "count"])
+    counts.title = f"{common_name} repeat"
     counts.format_column("count", lambda x: f"{x:,}")
     return counts

@@ -227,6 +227,7 @@ We provide a conventional command line interface for querying the data with subc
 
   Commands:
     alignments       export multiple alignments in fasta format for named genes
+    compara-summary  summary data for compara
     download         download data from Ensembl's ftp site
     dump-genes       export meta-data table for genes from one species to...
     exportrc         exports sample config and species table to the nominated...

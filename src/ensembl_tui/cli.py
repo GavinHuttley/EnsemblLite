@@ -11,6 +11,7 @@ from ensembl_tui import __version__
 from ensembl_tui import _config as eti_config
 from ensembl_tui import _download as eti_download
 from ensembl_tui import _genome as eti_genome
+from ensembl_tui import _homology as eti_homology
 from ensembl_tui import _species as eti_species
 from ensembl_tui import _util as eti_util
 
@@ -27,7 +28,7 @@ def _get_coord_names(ctx, param, coord_names) -> list[str] | None:
     return [f.strip() for f in coord_names.split(",")]
 
 
-def _get_installed_config_path(ctx, param, path) -> eti_util.PathType:
+def _get_installed_config_path(ctx, param, path) -> pathlib.Path:
     """path to installed.cfg"""
     path = pathlib.Path(path)
     if path.name == eti_config.INSTALLED_CONFIG_NAME:
@@ -72,7 +73,6 @@ _click_command_opts = {
 _cfgpath = click.option(
     "-c",
     "--configpath",
-    default=eti_download.DEFAULT_CFG,
     type=pathlib.Path,
     help="Path to config file specifying databases, (only "
     "species or compara at present).",
@@ -183,7 +183,7 @@ def main():
 
 @main.command(**_click_command_opts)
 @_dbrc_out
-def exportrc(outpath):
+def exportrc(outpath: pathlib.Path) -> None:
     """exports sample config and species table to the nominated path"""
 
     outpath = outpath.expanduser()
@@ -204,16 +204,18 @@ def exportrc(outpath):
 @_cfgpath
 @_debug
 @_verbose
-def download(configpath, debug, verbose):
+def download(configpath: pathlib.Path, debug: bool, verbose: bool) -> None:
     """download data from Ensembl's ftp site"""
     from rich import progress
 
-    if configpath.name == eti_download.DEFAULT_CFG:
-        # TODO is this statement correct if we're seting a root dir now?
+    if not configpath:
         eti_util.print_colour(
-            text="WARN: using the built in demo cfg, will write to /tmp",
-            colour="yellow",
+            text="No config specified, exiting.",
+            colour="red",
+            style="bold",
         )
+        sys.exit(1)
+
     config = eti_config.read_config(configpath, root_dir=pathlib.Path.cwd())
 
     if verbose:
@@ -323,7 +325,7 @@ def install(
 
 @main.command(**_click_command_opts)
 @_installed
-def installed(installed):
+def installed(installed: pathlib.Path) -> None:
     """show what is installed"""
     from cogent3 import make_table
 
@@ -340,8 +342,11 @@ def installed(installed):
             data["species"].append(name)
             data["common name"].append(cn)
 
-        table = make_table(data=data, title="Installed genomes")
+        table = make_table(data=data, title="Installed genomes:")
         eti_util.rich_display(table)
+
+    if config.homologies_path.exists():
+        eti_util.print_colour("Installed homologies: ✅", colour="blue", style="bold")
 
     # TODO as above
     compara_aligns = config.aligns_path
@@ -349,9 +354,13 @@ def installed(installed):
         align_names = {
             fn.stem for fn in compara_aligns.glob("*") if not fn.name.startswith(".")
         }
+        eti_util.print_colour(
+            "Installed whole genome alignments:",
+            colour="blue",
+            style="bold",
+        )
         table = make_table(
             data={"align name": list(align_names)},
-            title="Installed whole genome alignments",
         )
         eti_util.rich_display(table)
 
@@ -359,7 +368,7 @@ def installed(installed):
 @main.command(**_click_command_opts)
 @_installed
 @_species
-def species_summary(installed, species):
+def species_summary(installed: pathlib.Path, species: str) -> None:
     """genome summary data for a species"""
 
     config = eti_config.read_installed_cfg(installed)
@@ -378,8 +387,26 @@ def species_summary(installed, species):
     annot_db = eti_genome.load_annotations_for_species(
         path=config.installed_genome(species=species),
     )
-    summary = eti_genome.get_species_summary(annot_db=annot_db, species=species)
+    summary = eti_genome.get_species_gene_summary(annot_db=annot_db, species=species)
     eti_util.rich_display(summary)
+    summary = eti_genome.get_species_repeat_summary(annot_db=annot_db, species=species)
+    eti_util.rich_display(summary)
+
+
+@main.command(**_click_command_opts)
+@_installed
+def compara_summary(installed: pathlib.Path) -> None:
+    """summary data for compara"""
+
+    config = eti_config.read_installed_cfg(installed)
+    if config.homologies_path.exists():
+        db = eti_homology.load_homology_db(
+            path=config.homologies_path,
+        )
+        table = db.count_distinct(homology_type=True)
+        table.title = "Homology types"
+        table.format_column("count", lambda x: f"{x:,}")
+        eti_util.rich_display(table)
 
 
 @main.command(**_click_command_opts)
@@ -394,17 +421,17 @@ def species_summary(installed, species):
 @_force
 @_verbose
 def alignments(
-    installed,
-    outdir,
-    align_name,
-    ref,
-    coord_names,
-    ref_genes_file,
-    mask_features,
-    limit,
-    force_overwrite,
-    verbose,
-):
+    installed: pathlib.Path,
+    outdir: pathlib.Path,
+    align_name: str,
+    ref: str,
+    coord_names: str,
+    ref_genes_file: pathlib.Path,
+    mask_features: pathlib.Path,
+    limit: int,
+    force_overwrite: bool,
+    verbose: bool,
+) -> None:
     """export multiple alignments in fasta format for named genes"""
     from cogent3 import load_table
     from rich import progress
@@ -546,20 +573,18 @@ def alignments(
 @_force
 @_verbose
 def homologs(
-    installed,
-    outdir,
-    relationship,
-    ref,
-    coord_names,
-    num_procs,
-    limit,
-    force_overwrite,
-    verbose,
-):
+    installed: pathlib.Path,
+    outdir: pathlib.Path,
+    relationship: str,
+    ref: str,
+    coord_names: str,
+    num_procs: int,
+    limit: int,
+    force_overwrite: bool,
+    verbose: bool,
+) -> None:
     """exports CDS sequence data in fasta format for homology type relationship"""
     from rich import progress
-
-    from ensembl_tui import _homology as eti_homology
 
     LOGGER = CachingLogger()
     LOGGER.log_args()
@@ -671,7 +696,12 @@ def homologs(
 @_species
 @_outdir
 @_limit
-def dump_genes(installed, species, outdir, limit):
+def dump_genes(
+    installed: pathlib.Path,
+    species: str,
+    outdir: pathlib.Path,
+    limit: int,
+) -> None:
     """export meta-data table for genes from one species to <species>-<release>.gene_metadata.tsv"""
 
     config = eti_config.read_installed_cfg(installed)
