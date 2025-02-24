@@ -81,10 +81,12 @@ Some commands can be run in parallel but have moderate memory requirements. If y
   2. `sample.cfg`: a sample configuration file that you can edit to specify the data you want to download.
 
   The latter file includes comments on how to edit it in order to specify the genomic resources that you want.
+
 </details>
 
 <details>
   <summary>Downloading the data</summary>
+
   Downloads the data indicated in the config file to a local directory.
 
   <!-- [[[cog
@@ -98,6 +100,7 @@ Some commands can be run in parallel but have moderate memory requirements. If y
       "```\n{}\n```".format(help)
   )
   ]]] -->
+
   ```
   Usage: eti download [OPTIONS]
 
@@ -122,7 +125,7 @@ Some commands can be run in parallel but have moderate memory requirements. If y
   ```
 
   > **Note**
-  > Downloads can be interrupted and resumed. The software deletes partially downloaded files.
+  > This is the only step for which the internet is required. Downloads can be interrupted and resumed. The software will delete partially downloaded files.
 
 The download creates a new `.cfg` file inside the download directory. This file is used by the `install` command.
 
@@ -130,7 +133,9 @@ The download creates a new `.cfg` file inside the download directory. This file 
 
 <details>
   <summary>Installing the data</summary>
-  
+
+Converts the downloaded data into data formats designed to enhance querying performance.
+
   <!-- [[[cog
   import cog
   from ensembl_tui import cli
@@ -158,7 +163,7 @@ The download creates a new `.cfg` file inside the download directory. This file 
   ```
   <!-- [[[end]]] -->
 
-The following command uses 2 CPUs and has been safe on systems with only 16GB of RAM for 10 primate genomes, including homology data and whole genome:
+This step can be run in parallel, but the memory requirements will scale with the number of genomes. So we suggest monitoring performance on your system by trying it out on a small number of CPUs to start with. The following command uses 2 CPUs and has been safe on systems with only 16GB of RAM for 10 primate genomes, including homology data and whole genome alignments.
 
 ```shell
 $ cd to/directory/with/downloaded_data
@@ -169,7 +174,9 @@ $ eti install -d downloaded_data -np 2
 
 <details>
   <summary>Checking what has been installed</summary>
-  
+This will give a summary of what data has been installed at a provided path.
+
+
   <!-- [[[cog
   import cog
   from ensembl_tui import cli
@@ -243,3 +250,39 @@ We provide a conventional command line interface for querying the data with subc
 </details>
 
 We also provide an experiment terminal user interface (TUI) that allows you to explore the data in a more interactive way. This is invoked with the `tui` subcommand.
+
+### Getting a summary of a genome
+
+A command like the following
+```
+eti species-summary -i primates10_113/install --species human
+```
+displays two tables for the indicated genome. The first is the biotypes and their counts, the second the repeat classes / types and their counts.
+
+### Getting a summary of a homology data
+
+A command like the following
+```
+eti compara-summary -i primates10_113/install
+```
+displays the homology types and counts. The values under `homology_type` can be used as input arguments to the `homologs` command `--homology_type` argument.
+
+### Exporting related sequences
+
+A command like the following
+```
+eti homologs -i primates10_113/install/ --outdir sampled_100 --ref human --coord_names 1 --limit 100
+```
+will sample 100 one-to-one orthologs (the default homology type) to human chromosome 1 linked protein coding genes (the only biotype supported at present). The canonical CDS sequences will be written in fasta format to the directory `sampled_100`.
+
+### Exporting whole genome alignments
+
+A command like the following
+```
+eti alignments -i primates10_113/install --outdir sampled_aligns_100 --align_name '*primate*' --coord_names 1 --ref human --limit 10
+```
+samples 10 alignments that include human chromosome 1 protein coding genes. These are from the Ensembl whole genome alignment whose name matches the glob pattern `*primate*`.
+
+> **Warning**
+>
+> If this pattern matches more than one installed Ensembl alignment, the program will exit.

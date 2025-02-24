@@ -560,9 +560,9 @@ def alignments(
 @_installed
 @_outdir
 @click.option(
-    "-r",
-    "--relationship",
-    type=click.Choice(["ortholog_one2one"]),
+    "-ht",
+    "--homology_type",
+    type=str,
     default="ortholog_one2one",
     help="type of homology",
 )
@@ -575,7 +575,7 @@ def alignments(
 def homologs(
     installed: pathlib.Path,
     outdir: pathlib.Path,
-    relationship: str,
+    homology_type: str,
     ref: str,
     coord_names: str,
     num_procs: int,
@@ -601,7 +601,7 @@ def homologs(
 
     outdir.mkdir(parents=True, exist_ok=True)
 
-    LOGGER.log_file_path = outdir / f"homologs-{ref}-{relationship}.log"
+    LOGGER.log_file_path = outdir / f"homologs-{ref}-{homology_type}.log"
 
     config = eti_config.read_installed_cfg(installed)
     eti_species.Species.update_from_file(config.genomes_path / "species.tsv")
@@ -642,7 +642,7 @@ def homologs(
             description="Homolog search",
         )
         for gid in gene_ids:
-            if rel := db.get_related_to(gene_id=gid, relationship_type=relationship):
+            if rel := db.get_related_to(gene_id=gid, relationship_type=homology_type):
                 related.append(rel)
                 progress.update(searching, advance=1)
 
