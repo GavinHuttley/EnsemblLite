@@ -128,7 +128,7 @@ def test_homologs(installed, tmp_dir):
         f"{outdir}",
         "--limit",
         str(limit),
-        "-r",
+        "-ht",
         "ortholog_one2one",
         "-v",
     ]
@@ -157,7 +157,7 @@ def test_homologs_coord_name(installed, tmp_dir):
         str(limit),
         "--coord_names",
         "I,XVI,II",
-        "-r",
+        "-ht",
         "ortholog_one2one",
         "-v",
     ]
