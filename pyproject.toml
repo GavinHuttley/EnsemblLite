@@ -17,7 +17,7 @@ maintainers = [
 keywords = ["biology", "genomics", "evolution", "bioinformatics"]
 readme = "README.md"
 license = { file = "LICENSE" }
-requires-python = ">=3.10,<3.13"
+requires-python = ">=3.10,<3.14"
 dependencies = ["blosc2",
         "click",
         "cogent3>=2024.12.19a2",
@@ -44,6 +44,7 @@ classifiers = [
         "Programming Language :: Python :: 3.10",
         "Programming Language :: Python :: 3.11",
         "Programming Language :: Python :: 3.12",
+        "Programming Language :: Python :: 3.13",
     ]
 dynamic = ["version", "description"]
 
@@ -68,40 +69,33 @@ test = [
 doc  = ["click",
         "sphinx",
         "sphinx-autobuild",
-        "sphinx>=1.6",
         "sphinx_book_theme",
         "sphinx_design",
-        "sphinxcontrib-bibtex"]
+        "sphinxcontrib-bibtex",
+        "ipykernel",
+        "ipython",
+        "ipywidgets",
+        "jupyter-sphinx",
+        "jupyter_client",
+        "jupyterlab",
+        "jupytext",
+        "kaleido",
+        "nbconvert>5.4",
+        "nbformat",
+        "nbsphinx",
+        "pillow",
+        "plotly",
+        ]
 dev = ["click",
        "cogapp",
        "flit",
-       "ipykernel",
-       "ipython",
-       "ipywidgets",
-       "jupyter-sphinx",
-       "jupyter_client",
-       "jupyterlab",
-       "jupytext",
-       "kaleido",
-       "nbconvert>5.4",
-       "nbformat",
-       "nbsphinx",
        "nox",
        "numpydoc",
-       "pandas",
-       "pillow",
-       "plotly",
        "psutil",
-       "pytest",
-       "pytest-cov",
-       "pytest-xdist",
-       "ruff==0.9.1",
        "scriv",
-       "sphinx",
-       "sphinx-autobuild",
-       "sphinx_book_theme",
-       "sphinx_design",
-       "sphinxcontrib-bibtex"]
+       "ensembl_tui[doc]",
+       "ensembl_tui[test]",
+       ]
 
 [tool.flit.sdist]
 include = ["src/*", "tests/*", "pyproject.toml"]
