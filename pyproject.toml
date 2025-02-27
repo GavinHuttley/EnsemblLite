@@ -64,7 +64,7 @@ test = [
     "pytest-cov",
     "pytest-timeout",
     "pytest-xdist",
-    "ruff==0.9.1",
+    "ruff==0.9.7",
     "nox"]
 doc  = ["click",
         "sphinx",
