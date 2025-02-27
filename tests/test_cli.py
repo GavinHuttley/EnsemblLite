@@ -80,6 +80,70 @@ def test_installed(installed):
 
 
 @pytest.mark.slow
+def test_check_one_cds_seq(installed):
+    # checking a single exon sequence with a rel_start > 0
+    from ensembl_tui import _genome as eti_genome
+
+    config = eti_config.read_installed_cfg(installed)
+    genome = eti_genome.load_genome(
+        config=config,
+        species="saccharomyces_cerevisiae",
+    )
+    cds = next(iter(genome.get_cds(stable_id="YMR242C")))
+    seq = cds.get_slice()
+    expect = (
+        "GCTCACTTTAAAGAATACCAAGTTATTGGCCGTCGTTTGCCAACTGAATCTGTTCCAGAA"
+        "CCAAAGTTGTTCAGAATGAGAATCTTTGCTTCAAATGAAGTTATTGCCAAGTCTCGTTAC"
+        "TGGTATTTCTTGCAAAAGTTGCACAAGGTTAAGAAGGCTTCTGGTGAAATTGTTTCCATC"
+        "AACCAAATCAACGAAGCTCATCCAACCAAGGTCAAGAACTTCGGTGTCTGGGTTAGATAC"
+        "GACTCCAGATCTGGTACTCACAATATGTACAAGGAAATCAGAGACGTCTCCAGAGTTGCT"
+        "GCCGTCGAAACCTTATACCAAGACATGGCTGCCAGACACAGAGCTAGATTTAGATCTATT"
+        "CACATCTTGAAGGTTGCTGAAATTGAAAAGACTGCTGACGTCAAGAGACAATACGTTAAG"
+        "CAATTTTTGACCAAGGACTTGAAATTCCCATTGCCTCACAGAGTCCAAAAATCCACCAAG"
+        "ACTTTCTCCTACAAGAGACCTTCCACTTTCTACTGA"
+    )
+    assert str(cds.get_slice()) == expect
+
+
+@pytest.mark.slow
+def test_check_multi_exon_cds_seq_plus_strand(installed):
+    # checking a multi exon sequence with a rel_start > 0
+    # and rel_end != exon length
+    from ensembl_tui import _genome as eti_genome
+
+    config = eti_config.read_installed_cfg(installed)
+    genome = eti_genome.load_genome(
+        config=config,
+        species="caenorhabditis_elegans",
+    )
+    cds = next(iter(genome.get_cds(stable_id="WBGene00185002")))
+    aa = str(cds.get_slice().get_translation())
+    # seq expected values from ensembl
+    assert aa.startswith("MEMEDIDDDITVFYTDDRGTVQGPYGASTVLDWYQKGYFSDNHQMRFTDNGQRIGNLFTY")
+    assert aa.endswith("IEKVKTNCRDAPSPLPPAMDPVAPYHVRDKCTQS")
+    assert len(aa) == 274
+
+
+@pytest.mark.slow
+def test_check_two_exon_cds_seq_rev_strand(installed):
+    # checking a two exon sequence with a rel_start > 0
+    # and rel_end != exon length
+    from ensembl_tui import _genome as eti_genome
+
+    config = eti_config.read_installed_cfg(installed)
+    genome = eti_genome.load_genome(
+        config=config,
+        species="caenorhabditis_elegans",
+    )
+    cds = next(iter(genome.get_cds(stable_id="WBGene00184990")))
+    aa = str(cds.get_slice().get_translation())
+    # seq expected values from ensembl
+    assert aa.startswith("MSGVYNNSGSRMRSKNFEKHQVPSDMAFFQKFRKQSHSNETVDCKKKQEE")
+    assert aa.endswith("DGHYSDETVEEKHNREHRNKTKADNRTRRIAEIRRKHNINA")
+    assert len(aa) == 161
+
+
+@pytest.mark.slow
 def test_species_summary(installed):
     r = RUNNER.invoke(
         eti_cli.species_summary,

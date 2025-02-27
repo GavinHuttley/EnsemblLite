@@ -50,7 +50,7 @@ def namer():
     return name_as_seqid
 
 
-TEST_DATA_URL = "https://zenodo.org/records/14625203/files/small-113.zip"
+TEST_DATA_URL = "https://www.dropbox.com/scl/fi/pfmwzz96gusdeqi0a9wax/small-113.zip?rlkey=r60l1eq9jk6p440tkqslmqihi&st=ud49fits&dl=1"
 SMALL_DATA_DIRNAME = "small-113"
 
 

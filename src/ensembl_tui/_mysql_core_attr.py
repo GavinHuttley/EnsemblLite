@@ -133,6 +133,10 @@ class LimitExons:
     strand: int
     transcript_id: int
 
+    @property
+    def single_exon(self) -> bool:
+        return self.start_rank == self.stop_rank
+
 
 def get_all_limit_exons(
     conn: duckdb.DuckDBPyConnection,
@@ -182,8 +186,7 @@ def get_limit_exons(records: list[tuple[int, ...]]) -> LimitExons:
     return LimitExons(
         start_rank=start_rank,
         stop_rank=end_rank,
-        # subtract 1 to convert to 0-based
-        rel_start=rel_start - 1,
+        rel_start=rel_start,
         rel_stop=rel_end,
         strand=strand,
         transcript_id=transcript_id,
@@ -232,6 +235,13 @@ class TranscriptAttrRecord:
         return tuple(mapping[c] for c in columns)
 
 
+def _adjust_single_exon(lex: LimitExons, cds_span: tuple[int, int]) -> tuple[int, int]:
+    ex_start = cds_span[0] if lex.strand == 1 else cds_span[1]
+    if lex.strand == 1:
+        return ex_start + lex.rel_start, ex_start + lex.rel_stop
+    return ex_start - lex.rel_stop, ex_start - lex.rel_start
+
+
 def get_transcript_attr_records(
     conn: duckdb.DuckDBPyConnection,
 ) -> typing.Iterator[TranscriptAttrRecord]:
@@ -269,6 +279,8 @@ def get_transcript_attr_records(
         for i, rank in enumerate(ranks):
             transcript_spans[rank - 1] = (starts[i], stops[i])
 
+        cds_spans = transcript_spans.copy()
+        transcript_spans = transcript_spans[numpy.lexsort(transcript_spans.T), :]
         if transcript_id not in limit_exons:
             # no translated exons
             yield TranscriptAttrRecord(
@@ -291,7 +303,21 @@ def get_transcript_attr_records(
         # 5' end of an exon
         # so the start_exon coords become (exon_start + rel_start, exon_end)
         # the end_exon coords become (exon_start, exon_start + rel_stop)
-        cds_spans = transcript_spans.copy()
+        if lex.single_exon:
+            cds_spans[0, :] = _adjust_single_exon(lex, cds_spans[0])
+
+            yield TranscriptAttrRecord(
+                seqid=seqid,
+                transcript_id=transcript_id,
+                gene_id=gene_id,
+                strand=strand,
+                transcript_spans=transcript_spans,
+                cds_spans=cds_spans,
+                transcript_stable_id=transcript_stable_id,
+                cds_stable_id=cds_stable_id,
+            )
+            continue
+
         start_exon_coords = cds_spans[start_index]
         stop_exon_coords = cds_spans[stop_index]
         if lex.strand == 1:
@@ -321,7 +347,6 @@ def get_transcript_attr_records(
         # sort all spans in ascending numerical order
         # note that the lexsort returns the sorted indices
         cds_spans = cds_spans[numpy.lexsort(cds_spans.T), :]
-        transcript_spans = transcript_spans[numpy.lexsort(transcript_spans.T), :]
 
         yield TranscriptAttrRecord(
             seqid=seqid,
