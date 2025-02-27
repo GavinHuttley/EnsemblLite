@@ -102,7 +102,7 @@ def test_check_one_cds_seq(installed):
         "CAATTTTTGACCAAGGACTTGAAATTCCCATTGCCTCACAGAGTCCAAAAATCCACCAAG"
         "ACTTTCTCCTACAAGAGACCTTCCACTTTCTACTGA"
     )
-    assert str(cds.get_slice()) == expect
+    assert str(seq) == expect
 
 
 @pytest.mark.slow

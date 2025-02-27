@@ -73,9 +73,7 @@ def load_db(db_name: pathlib.Path, table_names: set[str]) -> duckdb.DuckDBPyConn
 
 
 location_attrs = {
-    # "coord_names": "coord_system",
     "location": "seq_region",
-    # "meta": "meta",
 }
 gene_attrs = {
     "stableid": "gene",
@@ -214,7 +212,7 @@ class TranscriptAttrRecord:
     def stop(self) -> int:
         return self.transcript_spans.max()
 
-    def to_record(self, columns: tuple[str]) -> tuple:
+    def to_record(self, columns: tuple[str, ...]) -> tuple:
         cds_blob = (
             eti_storage.array_to_blob(self.cds_spans)
             if self.cds_spans is not None
@@ -418,6 +416,3 @@ def make_gene_attr(con: duckdb.DuckDBPyConnection) -> duckdb.DuckDBPyConnection:
         """
     con.sql(sql)
     return con
-
-
-# the repeat and location related tables are left as is
