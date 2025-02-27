@@ -198,3 +198,10 @@ def test_get_ids_for_biotype_seqid(yeast):
         r.seqid for stable_id in stable_ids for r in yeast.get_features(name=stable_id)
     }
     assert got == seqids
+
+
+def test_get_celegans_cds(worm):
+    cds = next(iter(worm.get_cds(stable_id="WBGene00021347")))
+    seq = cds.get_slice()
+    aa = seq.get_translation()
+    assert aa == "MIIPIRCFTCGKVIGDKWETYLGFLQSEYSEGDALDALGLRRYCCRRMLLAHVDLIEKLLNYHPLEK"
