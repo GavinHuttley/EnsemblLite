@@ -235,6 +235,13 @@ class TranscriptAttrRecord:
         return tuple(mapping[c] for c in columns)
 
 
+def _adjust_single_exon(lex: LimitExons, cds_span: tuple[int, int]) -> tuple[int, int]:
+    ex_start = cds_span[0] if lex.strand == 1 else cds_span[1]
+    if lex.strand == 1:
+        return ex_start + lex.rel_start, ex_start + lex.rel_stop
+    return ex_start - lex.rel_stop, ex_start - lex.rel_start
+
+
 def get_transcript_attr_records(
     conn: duckdb.DuckDBPyConnection,
 ) -> typing.Iterator[TranscriptAttrRecord]:
@@ -297,13 +304,7 @@ def get_transcript_attr_records(
         # so the start_exon coords become (exon_start + rel_start, exon_end)
         # the end_exon coords become (exon_start, exon_start + rel_stop)
         if lex.single_exon:
-            ex_start = cds_spans[0][0] if lex.strand == 1 else cds_spans[0][1]
-            if lex.strand == 1:
-                start, stop = ex_start + lex.rel_start, ex_start + lex.rel_stop
-            else:
-                start, stop = ex_start - lex.rel_stop, ex_start - lex.rel_start
-
-            cds_spans[0, :] = start, stop
+            cds_spans[0, :] = _adjust_single_exon(lex, cds_spans[0])
 
             yield TranscriptAttrRecord(
                 seqid=seqid,
