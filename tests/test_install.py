@@ -222,7 +222,7 @@ def test_get_limiting_exons_one_exon(one_exon):
     all_exons = eti_tables.get_all_limit_exons(one_exon)
     lex = eti_tables.get_limit_exons(all_exons[1664])
     assert lex.start_rank == lex.stop_rank == 1
-    assert lex.rel_start == 0
+    assert lex.rel_start == 1
     assert lex.rel_stop == 1
 
 
@@ -249,7 +249,7 @@ def test_get_limiting_exons_two_exons(two_exon):
     lex = eti_tables.get_limit_exons(all_exons[269944])
     assert lex.start_rank == 4
     assert lex.stop_rank == 12
-    assert lex.rel_start == 28
+    assert lex.rel_start == 29
     assert lex.rel_stop == 54
 
 
@@ -343,7 +343,7 @@ def same_tr_cds(four_exons):
         {
             "transcript_id": 11,
             "start_exon_id": 1,
-            "seq_start": 1,
+            "seq_start": 0,
             "end_exon_id": 4,
             "seq_end": 100,
             "stable_id": "a1",
@@ -371,7 +371,7 @@ def diff_tr_cds(four_exons):
         {
             "transcript_id": 11,
             "start_exon_id": 2,
-            "seq_start": 1,
+            "seq_start": 0,
             "end_exon_id": 3,
             "seq_end": 100,
         },
@@ -399,7 +399,7 @@ def tr_cds_rel_pos(four_exons):
         {
             "transcript_id": 11,
             "start_exon_id": 1,
-            "seq_start": 2,
+            "seq_start": 1,
             "end_exon_id": 4,
             "seq_end": 2,
         },
@@ -486,7 +486,7 @@ def test_rel_start_ends_2(tr_cds_rel_pos_minus):
     assert tr.start == 100
     assert tr.stop == 400
     assert numpy.array_equal(tr.transcript_spans, [(100, 200), (300, 400)])
-    assert numpy.array_equal(tr.cds_spans, [(200 - 10, 200), (300, 400 - 4)])
+    assert numpy.array_equal(tr.cds_spans, [(200 - 10, 200), (300, 400 - 5)])
 
 
 def test_no_cds_spans(four_exons):
@@ -609,7 +609,7 @@ def mixed_data():
         {
             "transcript_id": 12,
             "start_exon_id": 7,
-            "seq_start": 1,
+            "seq_start": 0,
             "end_exon_id": 5,
             "seq_end": 100,
             "stable_id": "pr-01",

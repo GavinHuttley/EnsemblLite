@@ -186,8 +186,7 @@ def get_limit_exons(records: list[tuple[int, ...]]) -> LimitExons:
     return LimitExons(
         start_rank=start_rank,
         stop_rank=end_rank,
-        # subtract 1 to convert to 0-based
-        rel_start=rel_start - 1,
+        rel_start=rel_start,
         rel_stop=rel_end,
         strand=strand,
         transcript_id=transcript_id,
@@ -273,6 +272,8 @@ def get_transcript_attr_records(
         for i, rank in enumerate(ranks):
             transcript_spans[rank - 1] = (starts[i], stops[i])
 
+        cds_spans = transcript_spans.copy()
+        transcript_spans = transcript_spans[numpy.lexsort(transcript_spans.T), :]
         if transcript_id not in limit_exons:
             # no translated exons
             yield TranscriptAttrRecord(
@@ -295,7 +296,6 @@ def get_transcript_attr_records(
         # 5' end of an exon
         # so the start_exon coords become (exon_start + rel_start, exon_end)
         # the end_exon coords become (exon_start, exon_start + rel_stop)
-        cds_spans = transcript_spans.copy()
         if lex.single_exon:
             ex_start = cds_spans[0][0] if lex.strand == 1 else cds_spans[0][1]
             if lex.strand == 1:
@@ -346,7 +346,6 @@ def get_transcript_attr_records(
         # sort all spans in ascending numerical order
         # note that the lexsort returns the sorted indices
         cds_spans = cds_spans[numpy.lexsort(cds_spans.T), :]
-        transcript_spans = transcript_spans[numpy.lexsort(transcript_spans.T), :]
 
         yield TranscriptAttrRecord(
             seqid=seqid,
