@@ -28,9 +28,9 @@ jobs:
         uses: actions/cache@v3
         with:
           path: tests/data
-          key: ${{ runner.os }}-data-v1-${{ hashFiles('tests/data/small-113.zip') }}
+          key: ${{ runner.os }}-data-v2-${{ hashFiles('tests/data/small-113.zip') }}
           restore-keys: |
-            ${{ runner.os }}-data-v1-
+            ${{ runner.os }}-data-v2-
 
       - name: Check cache status
         run: |
@@ -39,7 +39,7 @@ jobs:
       - name: Download data file
         if: steps.cache-data.outputs.cache-hit != 'true'
         run: |
-          curl -o tests/data/small-113.zip https://zenodo.org/records/14625203/files/small-113.zip
+          curl -L -o tests/data/small-113.zip "https://www.dropbox.com/scl/fi/pfmwzz96gusdeqi0a9wax/small-113.zip?rlkey=r60l1eq9jk6p440tkqslmqihi&st=ud49fits&dl=1"
 
       - name: Unzip data file
         run: |
