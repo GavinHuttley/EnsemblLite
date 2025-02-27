@@ -302,6 +302,7 @@ def get_transcript_attr_records(
         # so the start_exon coords become (exon_start + rel_start, exon_end)
         # the end_exon coords become (exon_start, exon_start + rel_stop)
         if lex.single_exon:
+            cds_spans = cds_spans[start_index : start_index + 1]
             cds_spans[0, :] = _adjust_single_exon(lex, cds_spans[0])
 
             yield TranscriptAttrRecord(
